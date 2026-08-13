@@ -1,19 +1,37 @@
-# Development Log
+# Udviklingslog
 
 ## 2026-08-12
 
-Implemented:
+Implementeret:
 
-- Created the initial Flutter project skeleton.
-- Added a simple home screen explaining the app idea.
-- Added a small static list of example candidate locations.
-- Added a basic widget smoke test.
-- Wrote an initial development roadmap.
+- Oprettede det forste Flutter-projektskelet.
+- Tilfojede en simpel forside, der forklarer app-ideen.
+- Tilfojede en lille statisk liste med eksempler paa kandidatsteder.
+- Tilfojede en basal widget smoke test.
+- Skrev en indledende udviklingsplan.
 
-Problems encountered:
+Problemer:
 
-- None yet. The project intentionally avoids backend, maps, and native scan work on Day 1.
+- Ingen endnu. Projektet undgaar bevidst backend, kort og native scan-arbejde paa dag 1.
 
-Next:
+Naeste:
 
-- Add basic navigation and start shaping the first real data models.
+- Tilfoj grundlaeggende navigation og begynd at forme de forste rigtige datamodeller.
+
+## 2026-08-12 - Naeste udviklingsskridt
+
+Implementeret:
+
+- Delte den forste single-file prototype op i en lille app shell og feature-mapper.
+- Tilfojede bundnavigation til Home, Locations, Map, Scan og Profile.
+- Tilfojede de forste simple modeller for brugere, steder, broadcasts og scan-resultater.
+- Flyttede eksempelstederne ind i locations-featuren.
+- Tilfojede basale tests for navigation og de forste modelregler.
+
+Problemer:
+
+- Ingen backend eller native scan-arbejde endnu; skaermene er stadig bevidst lette.
+
+Naeste:
+
+- Tilfoj et simpelt location details-flow og begynd paa soegning/filtrering.
