@@ -33,24 +33,26 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   var _selectedIndex = 0;
 
-  static const _screens = [
-    HomeScreen(),
-    LocationListScreen(),
-    MapPlaceholderScreen(),
-    ScanPlaceholderScreen(),
-    ProfilePlaceholderScreen(),
-  ];
+  void _openTab(int index) {
+    setState(() => _selectedIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final screens = [
+      HomeScreen(onBrowseLocations: () => _openTab(1)),
+      const LocationListScreen(),
+      const MapPlaceholderScreen(),
+      const ScanPlaceholderScreen(),
+      const ProfilePlaceholderScreen(),
+    ];
+
     return Scaffold(
       appBar: AppBar(title: const Text('HearCast Finder')),
-      body: _screens[_selectedIndex],
+      body: screens[_selectedIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: (index) {
-          setState(() => _selectedIndex = index);
-        },
+        onDestinationSelected: _openTab,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),

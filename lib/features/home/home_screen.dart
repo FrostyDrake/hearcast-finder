@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({
+    required this.onBrowseLocations,
+    super.key,
+  });
+
+  final VoidCallback onBrowseLocations;
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +30,12 @@ class HomeScreen extends StatelessWidget {
               'Navigation and first data models are in place. Live maps, accounts, and scanning will come later.',
             ),
           ),
+        ),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: onBrowseLocations,
+          icon: const Icon(Icons.place_outlined),
+          label: const Text('Browse candidate locations'),
         ),
       ],
     );

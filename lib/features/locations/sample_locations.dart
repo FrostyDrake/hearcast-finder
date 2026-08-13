@@ -10,6 +10,7 @@ const sampleLocations = [
     status: LocationStatus.candidate,
     latitude: 55.6761,
     longitude: 12.5683,
+    notes: 'Conference rooms are a likely early place to check for public audio.',
   ),
   AuracastLocation(
     id: 'central-station-platform',
@@ -20,6 +21,7 @@ const sampleLocations = [
     status: LocationStatus.candidate,
     latitude: 55.6728,
     longitude: 12.5656,
+    notes: 'Could become useful for platform announcements and travel updates.',
   ),
   AuracastLocation(
     id: 'museum-auditorium',
@@ -30,5 +32,6 @@ const sampleLocations = [
     status: LocationStatus.unknown,
     latitude: 56.1629,
     longitude: 10.2039,
+    notes: 'Worth checking for guided tours and auditorium talks.',
   ),
 ];

@@ -35,3 +35,22 @@ Problemer:
 Naeste:
 
 - Tilfoj et simpelt location details-flow og begynd paa soegning/filtrering.
+
+## 2026-08-13
+
+Implementeret:
+
+- Tilfojede et simpelt location details-flow fra kandidatlisten.
+- Tilfojede soegning paa navn, adresse, by, kategori, status og noter.
+- Tilfojede kategorifilter til location-listen.
+- Udvidede kandidatstederne med korte noter.
+- Tilfojede unit tests for filtrering og modelsoegning.
+- Udvidede widget-testen, saa den daekker soegning og location details.
+
+Problemer:
+
+- Data er stadig lokal og statisk; persistence venter til Firebase-dagene.
+
+Naeste:
+
+- Forbered Firebase-plan og begynd at tilfoje auth/Firestore-afhaengigheder uden at koble hele appen op endnu.

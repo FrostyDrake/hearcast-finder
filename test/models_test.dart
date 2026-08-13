@@ -8,6 +8,24 @@ void main() {
     expect(LocationCategory.transport.label, 'Transport');
   });
 
+  test('locations can match simple search queries', () {
+    const location = AuracastLocation(
+      id: 'museum-auditorium',
+      name: 'Museum Auditorium',
+      address: 'Gallery Road 4',
+      city: 'Aarhus',
+      category: LocationCategory.museum,
+      status: LocationStatus.unknown,
+      latitude: 56.1629,
+      longitude: 10.2039,
+      notes: 'Guided tours and auditorium talks.',
+    );
+
+    expect(location.matchesQuery('aarhus'), isTrue);
+    expect(location.matchesQuery('guided'), isTrue);
+    expect(location.matchesQuery('airport'), isFalse);
+  });
+
   test('scan results start as local-only by default', () {
     final result = ScanResult(
       id: 'scan-1',

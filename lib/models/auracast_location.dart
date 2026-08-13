@@ -50,6 +50,7 @@ class AuracastLocation {
     required this.status,
     required this.latitude,
     required this.longitude,
+    this.notes = '',
   });
 
   final String id;
@@ -60,4 +61,21 @@ class AuracastLocation {
   final LocationStatus status;
   final double latitude;
   final double longitude;
+  final String notes;
+
+  bool matchesQuery(String query) {
+    final normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.isEmpty) {
+      return true;
+    }
+
+    return [
+      name,
+      address,
+      city,
+      category.label,
+      status.label,
+      notes,
+    ].any((value) => value.toLowerCase().contains(normalizedQuery));
+  }
 }
