@@ -12,11 +12,13 @@ Repositoryet starter den 12. august 2026 og bliver udviklet trinvist. Den nuvaer
 - Skaerme for Home, Locations, Map, Scan og Profile
 - Statisk liste med kandidatsteder baseret paa de forste modeller
 - Basal smoke test
+- Firebase dependencies til naeste backend-milepael
+- Firebase emulator config og lukket starterregel til Firestore
 
 ## Ikke Implementeret Endnu
 
-- Firebase login
-- Firestore lagring
+- Firebase login UI og auth flow
+- Firestore lagring i appen
 - Google Maps
 - Native Android Bluetooth scanning
 - Rapporter, anmeldelser, favoritter, ejerfunktioner eller adminfunktioner

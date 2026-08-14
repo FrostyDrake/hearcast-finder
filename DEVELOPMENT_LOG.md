@@ -54,3 +54,22 @@ Problemer:
 Naeste:
 
 - Forbered Firebase-plan og begynd at tilfoje auth/Firestore-afhaengigheder uden at koble hele appen op endnu.
+
+## 2026-08-14
+
+Implementeret:
+
+- Tilfojede Firebase dependencies: core, auth og Firestore.
+- Tilfojede `firebase.json` med Auth- og Firestore-emulatorer.
+- Tilfojede en foerste lukket `firestore.rules`, saa databasen ikke er aaben ved et uheld.
+- Tilfojede dansk Firebase setup-dokumentation.
+- Tilfojede en lille statusmodel, der viser hvilke Firebase-setupdele der er klar.
+- Tilfojede test for Firebase setup-status.
+
+Problemer:
+
+- Appen kan ikke forbinde til Firebase endnu, fordi `firebase_options.dart` og Android-konfiguration ikke er genereret.
+
+Naeste:
+
+- Begynd paa login/register-skaerme og koble dem paa Firebase, naar konfigurationen er paa plads.
