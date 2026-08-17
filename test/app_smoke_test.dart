@@ -41,4 +41,32 @@ void main() {
     expect(find.text('Location details'), findsOneWidget);
     expect(find.text('Approximate coordinates'), findsOneWidget);
   });
+
+  testWidgets('can register a local profile', (tester) async {
+    await tester.pumpWidget(const HearCastFinderApp());
+
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Register'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Name'),
+      'Andrei',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Email'),
+      'andrei@example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Password'),
+      'password123',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Register'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Profile'), findsWidgets);
+    expect(find.text('Andrei'), findsOneWidget);
+    expect(find.textContaining('andrei@example.com'), findsOneWidget);
+  });
 }

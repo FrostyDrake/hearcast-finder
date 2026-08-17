@@ -2,7 +2,37 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Day 4: keep Firestore closed until real data flows and auth checks exist.
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwnUser(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function hasUserRole(roleName) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == roleName;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwnUser(uid) || hasUserRole('admin');
+      allow create: if isOwnUser(uid)
+        && request.resource.data.id == uid
+        && request.resource.data.role == 'user';
+      allow update: if isOwnUser(uid)
+        && request.resource.data.role == resource.data.role;
+      allow delete: if false;
+    }
+
+    match /locations/{locationId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.status in ['candidate', 'unknown'];
+      allow update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

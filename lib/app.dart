@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'features/home/home_screen.dart';
 import 'features/locations/location_list_screen.dart';
 import 'features/map/map_placeholder_screen.dart';
-import 'features/profile/profile_placeholder_screen.dart';
+import 'features/profile/profile_screen.dart';
 import 'features/scan/scan_placeholder_screen.dart';
 
 class HearCastFinderApp extends StatelessWidget {
@@ -44,7 +44,7 @@ class _AppShellState extends State<AppShell> {
       const LocationListScreen(),
       const MapPlaceholderScreen(),
       const ScanPlaceholderScreen(),
-      const ProfilePlaceholderScreen(),
+      const ProfileScreen(),
     ];
 
     return Scaffold(

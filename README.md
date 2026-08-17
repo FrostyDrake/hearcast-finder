@@ -14,11 +14,13 @@ Repositoryet starter den 12. august 2026 og bliver udviklet trinvist. Den nuvaer
 - Basal smoke test
 - Firebase dependencies til naeste backend-milepael
 - Firebase emulator config og lukket starterregel til Firestore
+- Lokal login/register UI i Profile
+- Foerste Firestore-klare repositories for users og locations
 
 ## Ikke Implementeret Endnu
 
-- Firebase login UI og auth flow
-- Firestore lagring i appen
+- Rigtig Firebase login-forbindelse
+- Rigtig Firestore lagring i appen
 - Google Maps
 - Native Android Bluetooth scanning
 - Rapporter, anmeldelser, favoritter, ejerfunktioner eller adminfunktioner

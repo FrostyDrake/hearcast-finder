@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hearcast_finder/models/app_user.dart';
 import 'package:hearcast_finder/models/auracast_location.dart';
 import 'package:hearcast_finder/models/scan_result.dart';
 
@@ -24,6 +25,40 @@ void main() {
     expect(location.matchesQuery('aarhus'), isTrue);
     expect(location.matchesQuery('guided'), isTrue);
     expect(location.matchesQuery('airport'), isFalse);
+  });
+
+  test('locations can be serialized for Firestore', () {
+    const location = AuracastLocation(
+      id: 'central-station',
+      name: 'Central Station',
+      address: 'Station Road',
+      city: 'Copenhagen',
+      category: LocationCategory.transport,
+      status: LocationStatus.candidate,
+      latitude: 55.6728,
+      longitude: 12.5656,
+      notes: 'Platform announcements.',
+    );
+
+    final parsed = AuracastLocation.fromMap(location.id, location.toMap());
+
+    expect(parsed.id, location.id);
+    expect(parsed.category, LocationCategory.transport);
+    expect(parsed.notes, 'Platform announcements.');
+  });
+
+  test('users can be serialized for Firestore', () {
+    const user = AppUser(
+      id: 'user-1',
+      name: 'Andrei',
+      email: 'andrei@example.com',
+      role: AppUserRole.owner,
+    );
+
+    final parsed = AppUser.fromMap(user.toMap());
+
+    expect(parsed.id, 'user-1');
+    expect(parsed.role, AppUserRole.owner);
   });
 
   test('scan results start as local-only by default', () {

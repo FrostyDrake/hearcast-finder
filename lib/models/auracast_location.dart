@@ -63,6 +63,35 @@ class AuracastLocation {
   final double longitude;
   final String notes;
 
+  factory AuracastLocation.fromMap(String id, Map<String, dynamic> map) {
+    return AuracastLocation(
+      id: id,
+      name: map['name'] as String? ?? '',
+      address: map['address'] as String? ?? '',
+      city: map['city'] as String? ?? '',
+      category:
+          LocationCategory.values.byName(map['category'] as String? ?? 'other'),
+      status:
+          LocationStatus.values.byName(map['status'] as String? ?? 'unknown'),
+      latitude: (map['latitude'] as num?)?.toDouble() ?? 0,
+      longitude: (map['longitude'] as num?)?.toDouble() ?? 0,
+      notes: map['notes'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'address': address,
+      'city': city,
+      'category': category.name,
+      'status': status.name,
+      'latitude': latitude,
+      'longitude': longitude,
+      'notes': notes,
+    };
+  }
+
   bool matchesQuery(String query) {
     final normalizedQuery = query.trim().toLowerCase();
     if (normalizedQuery.isEmpty) {

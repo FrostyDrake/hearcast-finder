@@ -73,3 +73,23 @@ Problemer:
 Naeste:
 
 - Begynd paa login/register-skaerme og koble dem paa Firebase, naar konfigurationen er paa plads.
+
+## 2026-08-17 - Weekend + mandag
+
+Implementeret:
+
+- Tilfojede lokal login/register UI under Profile.
+- Tilfojede simpel auth service-struktur, som senere kan udskiftes med Firebase Auth.
+- Tilfojede validering for navn, email og password.
+- Tilfojede Firestore mapping til AppUser og AuracastLocation.
+- Tilfojede foerste UserRepository og LocationRepository.
+- Udvidede Firestore rules med tidlige users/locations-regler.
+- Tilfojede tests for auth service, validators, model mapping og profile-flow.
+
+Problemer:
+
+- Login er stadig lokal/demo, fordi Firebase-options og Android app-konfiguration ikke er oprettet i dette nye repo endnu.
+
+Naeste:
+
+- Tilfoj rigtig Firebase initialisering og begynd at gemme brugerprofil/location-data via repositories.

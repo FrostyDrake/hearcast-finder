@@ -10,6 +10,7 @@ Dette dokument beskriver den tidlige Firebase-plan for HearCast Finder. Dag 4 ha
   - `cloud_firestore`
 - `firebase.json` med Auth- og Firestore-emulatorer.
 - `firestore.rules` med lukket standardregel.
+- Foerste repositories for `users` og `locations`.
 
 ## Mangler Stadig
 
@@ -18,7 +19,7 @@ Dette dokument beskriver den tidlige Firebase-plan for HearCast Finder. Dag 4 ha
 - Koer FlutterFire CLI og generer `firebase_options.dart`.
 - Tilfoj Android-konfiguration, naar Android-platformen bliver genereret.
 - Aktiver Email/Password login i Firebase Console.
-- Udvid Firestore rules, naar dataflows er implementeret.
+- Test Firestore rules i emulatoren, naar dataflows er implementeret.
 
 ## Lokalt Senere
 
