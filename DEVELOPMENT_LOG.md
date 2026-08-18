@@ -93,3 +93,22 @@ Problemer:
 Naeste:
 
 - Tilfoj rigtig Firebase initialisering og begynd at gemme brugerprofil/location-data via repositories.
+
+## 2026-08-18
+
+Implementeret:
+
+- Tilfojede `google_maps_flutter` som dependency.
+- Tilfojede en lille MapService, der kan lave markers og camera position ud fra locations.
+- Erstattede map placeholder med en map preview-skaerm.
+- Tilfojede statisk map summary, saa appen stadig virker uden Maps API key.
+- Tilfojede valgfri interaktiv Google Map-visning til senere Android-konfiguration.
+- Tilfojede tests for MapService og map preview navigation.
+
+Problemer:
+
+- Google Maps kan ikke bruges fuldt paa Android foer API key og platform-konfiguration er paa plads.
+
+Naeste:
+
+- Begynd paa native Android scan bridge og scan UI, stadig med tydelige fallback states.

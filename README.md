@@ -16,12 +16,13 @@ Repositoryet starter den 12. august 2026 og bliver udviklet trinvist. Den nuvaer
 - Firebase emulator config og lukket starterregel til Firestore
 - Lokal login/register UI i Profile
 - Foerste Firestore-klare repositories for users og locations
+- Google Maps dependency og en foerste map preview baseret paa lokale locations
 
 ## Ikke Implementeret Endnu
 
 - Rigtig Firebase login-forbindelse
 - Rigtig Firestore lagring i appen
-- Google Maps
+- Google Maps Android API key og fuld native map-konfiguration
 - Native Android Bluetooth scanning
 - Rapporter, anmeldelser, favoritter, ejerfunktioner eller adminfunktioner
 

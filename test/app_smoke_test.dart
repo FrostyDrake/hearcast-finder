@@ -69,4 +69,15 @@ void main() {
     expect(find.text('Andrei'), findsOneWidget);
     expect(find.textContaining('andrei@example.com'), findsOneWidget);
   });
+
+  testWidgets('can open the map preview tab', (tester) async {
+    await tester.pumpWidget(const HearCastFinderApp());
+
+    await tester.tap(find.text('Map'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Map preview'), findsOneWidget);
+    expect(find.text('3 map markers prepared'), findsOneWidget);
+    expect(find.text('City Conference Hall'), findsOneWidget);
+  });
 }

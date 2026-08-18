@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'features/home/home_screen.dart';
 import 'features/locations/location_list_screen.dart';
-import 'features/map/map_placeholder_screen.dart';
+import 'features/map/map_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/scan/scan_placeholder_screen.dart';
 
@@ -42,7 +42,7 @@ class _AppShellState extends State<AppShell> {
     final screens = [
       HomeScreen(onBrowseLocations: () => _openTab(1)),
       const LocationListScreen(),
-      const MapPlaceholderScreen(),
+      const MapScreen(),
       const ScanPlaceholderScreen(),
       const ProfileScreen(),
     ];
