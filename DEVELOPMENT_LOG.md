@@ -112,3 +112,26 @@ Problemer:
 Naeste:
 
 - Begynd paa native Android scan bridge og scan UI, stadig med tydelige fallback states.
+
+## 2026-08-18 - Senere udviklingsskridt
+
+Implementeret:
+
+- Genererede Android-platformen for Flutter-projektet.
+- Satte Android package name til `com.hearcast.hearcast_finder`.
+- Satte Android minSdk til 33.
+- Tilfojede Bluetooth scan/connect/location permissions.
+- Tilfojede native Kotlin MethodChannel `hearcast/auracast_scanner`.
+- Implementerede native capability check, permission request, startScan og stopScan foundation.
+- Tilfojede Dart NativeScanService og scan-result parsing.
+- Erstattede scan placeholder med scan UI.
+- Tilfojede tests for native scan parsing og scan-tab smoke flow.
+
+Problemer:
+
+- Real scan kan foerst valideres paa en fysisk Android 13+ telefon.
+- Native scan er stadig en foundation; Auracast-specifik parsing skal forbedres med rigtige captures.
+
+Naeste:
+
+- Tilfoj scan evidence submission og begynd paa owner/location workflow.

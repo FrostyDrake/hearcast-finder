@@ -80,4 +80,15 @@ void main() {
     expect(find.text('3 map markers prepared'), findsOneWidget);
     expect(find.text('City Conference Hall'), findsOneWidget);
   });
+
+  testWidgets('can open the scan tab', (tester) async {
+    await tester.pumpWidget(const HearCastFinderApp());
+
+    await tester.tap(find.text('Scan'));
+    await tester.pump();
+
+    expect(find.text('Bluetooth scan'), findsOneWidget);
+    expect(find.text('Device capabilities'), findsOneWidget);
+    expect(find.text('Start scan'), findsOneWidget);
+  });
 }

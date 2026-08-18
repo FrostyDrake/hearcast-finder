@@ -17,13 +17,15 @@ Repositoryet starter den 12. august 2026 og bliver udviklet trinvist. Den nuvaer
 - Lokal login/register UI i Profile
 - Foerste Firestore-klare repositories for users og locations
 - Google Maps dependency og en foerste map preview baseret paa lokale locations
+- Android platform folder med native Bluetooth MethodChannel foundation
+- Scan UI med capability check, permission request og start/stop handling
 
 ## Ikke Implementeret Endnu
 
 - Rigtig Firebase login-forbindelse
 - Rigtig Firestore lagring i appen
 - Google Maps Android API key og fuld native map-konfiguration
-- Native Android Bluetooth scanning
+- Verificeret fysisk Android Bluetooth scan paa telefon
 - Rapporter, anmeldelser, favoritter, ejerfunktioner eller adminfunktioner
 
 ## Udvikling
