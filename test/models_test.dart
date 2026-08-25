@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hearcast_finder/models/app_user.dart';
 import 'package:hearcast_finder/models/auracast_location.dart';
+import 'package:hearcast_finder/models/location_feedback.dart';
 import 'package:hearcast_finder/models/scan_result.dart';
+import 'package:hearcast_finder/models/verification_request.dart';
 
 void main() {
   test('location category labels are readable', () {
@@ -70,5 +72,53 @@ void main() {
     );
 
     expect(result.status, ScanResultStatus.localOnly);
+  });
+
+  test('verification requests can be created from scan evidence', () {
+    final request = VerificationRequest.local(
+      scanResult: ScanResult(
+        id: 'scan-1',
+        broadcastName: 'Main Hall Audio',
+        rssi: -62,
+        detectedAt: DateTime.utc(2026, 8, 22),
+      ),
+      location: const AuracastLocation(
+        id: 'loc-1',
+        name: 'Main Hall',
+        address: 'Main Street',
+        city: 'Copenhagen',
+        category: LocationCategory.conference,
+        status: LocationStatus.candidate,
+        latitude: 55.6761,
+        longitude: 12.5683,
+      ),
+      createdAt: DateTime.utc(2026, 8, 22),
+    );
+
+    expect(request.status, VerificationStatus.pending);
+    expect(request.toMap()['locationName'], 'Main Hall');
+  });
+
+  test('location feedback serializes local favorites reviews and reports', () {
+    final favorite = FavoriteLocation.local(
+      locationId: 'loc-1',
+      createdAt: DateTime.utc(2026, 8, 23),
+    );
+    final review = LocationReview.local(
+      locationId: 'loc-1',
+      rating: 5,
+      comment: 'Useful audio in the main room.',
+      createdAt: DateTime.utc(2026, 8, 23),
+    );
+    final report = LocationReport.local(
+      locationId: 'loc-1',
+      reason: LocationReportReason.incorrectInfo,
+      createdAt: DateTime.utc(2026, 8, 23),
+    );
+
+    expect(favorite.toMap()['userId'], 'local-user');
+    expect(favorite.toMap()['locationId'], 'loc-1');
+    expect(review.toMap()['rating'], 5);
+    expect(report.toMap()['reason'], 'incorrectInfo');
   });
 }

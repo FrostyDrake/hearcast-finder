@@ -135,3 +135,43 @@ Problemer:
 Naeste:
 
 - Tilfoj scan evidence submission og begynd paa owner/location workflow.
+
+## 2026-08-22
+
+Implementeret:
+
+- Tilfojede VerificationRequest model og lokal VerificationRepository.
+- Tilfojede demo scan result til Scan-skaermen, saa submission-flowet kan testes uden fysisk BLE capture.
+- Tilfojede lokal scan evidence submission med valg af kandidatsted.
+- Tilfojede liste over indsendt evidence med pending status.
+- Tilfojede foerste owner dashboard med location draft-form.
+- Udvidede Firestore rules med tidlig `verificationRequests` collection.
+- Tilfojede tests for scan evidence submission, owner draft og verification model.
+
+Problemer:
+
+- Scan evidence og owner locations er stadig lokale i UI; rigtig persistence kommer med Firestore integration.
+
+Naeste:
+
+- Tilfoj admin review, rapporter/anmeldelser/favoritter og afsluttende test/docs cleanup.
+
+## 2026-08-23
+
+Implementeret:
+
+- Tilfojede lokal admin review queue med approve/reject handling for verification requests.
+- Tilfojede lokale favorites, reviews og reports paa location details.
+- Tilfojede LocationFeedback modeller og lokal repository.
+- Udvidede Firestore rules med foundation for admin updates, reviews, reports og favorites.
+- Opdaterede smoke/model tests for admin review og location feedback.
+- Opdaterede roadmap og docs til den sidste prototype-dag.
+
+Problemer:
+
+- Admin, feedback og favorites er stadig local-only UI, indtil rigtig Firestore persistence og Firebase Auth er koblet paa.
+- Security rules er en foundation og skal emulator-testes med rigtige auth claims/roller.
+
+Naeste:
+
+- Commit den afsluttende prototype, test paa telefon, og planlaeg rigtig backend-integration som separat production hardening.

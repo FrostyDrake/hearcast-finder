@@ -9,7 +9,7 @@ Repositoryet starter den 12. august 2026 og bliver udviklet trinvist. Den nuvaer
 - Minimal Flutter entry point
 - Simpelt Material theme
 - Grundlaeggende bundnavigation
-- Skaerme for Home, Locations, Map, Scan og Profile
+- Skaerme for Home, Locations, Map, Scan, Owner, Admin og Profile
 - Statisk liste med kandidatsteder baseret paa de forste modeller
 - Basal smoke test
 - Firebase dependencies til naeste backend-milepael
@@ -19,6 +19,10 @@ Repositoryet starter den 12. august 2026 og bliver udviklet trinvist. Den nuvaer
 - Google Maps dependency og en foerste map preview baseret paa lokale locations
 - Android platform folder med native Bluetooth MethodChannel foundation
 - Scan UI med capability check, permission request og start/stop handling
+- Lokal scan evidence submission til pending verification requests
+- Foerste owner dashboard til lokale location drafts
+- Lokal admin review af pending verification requests
+- Lokale favoritter, anmeldelser og rapporter paa location details
 
 ## Ikke Implementeret Endnu
 
@@ -26,7 +30,7 @@ Repositoryet starter den 12. august 2026 og bliver udviklet trinvist. Den nuvaer
 - Rigtig Firestore lagring i appen
 - Google Maps Android API key og fuld native map-konfiguration
 - Verificeret fysisk Android Bluetooth scan paa telefon
-- Rapporter, anmeldelser, favoritter, ejerfunktioner eller adminfunktioner
+- Rigtig admin backend, moderation audit log og production security review
 
 ## Udvikling
 

@@ -28,4 +28,5 @@ Dag 8 tilfojer Android-platformen og den foerste native Bluetooth scan bridge.
 
 - Auracast-detektion er endnu kun baseret paa BLE scan data.
 - Scan-resultater gemmes ikke endnu.
-- Scan submission og admin verification kommer i naeste udviklingsdag.
+- Scan evidence kan nu indsendes lokalt som pending verification request.
+- Admin verification kan gennemgaas lokalt i Admin-fanen.

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'features/admin/admin_dashboard_screen.dart';
 import 'features/home/home_screen.dart';
 import 'features/locations/location_list_screen.dart';
 import 'features/map/map_screen.dart';
+import 'features/owner/owner_dashboard_screen.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/scan/scan_screen.dart';
 
@@ -44,6 +46,8 @@ class _AppShellState extends State<AppShell> {
       const LocationListScreen(),
       const MapScreen(),
       const ScanScreen(),
+      const OwnerDashboardScreen(),
+      const AdminDashboardScreen(),
       const ProfileScreen(),
     ];
 
@@ -73,6 +77,16 @@ class _AppShellState extends State<AppShell> {
             icon: Icon(Icons.bluetooth_searching),
             selectedIcon: Icon(Icons.bluetooth_connected),
             label: 'Scan',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.business_outlined),
+            selectedIcon: Icon(Icons.business),
+            label: 'Owner',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.admin_panel_settings_outlined),
+            selectedIcon: Icon(Icons.admin_panel_settings),
+            label: 'Admin',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline),

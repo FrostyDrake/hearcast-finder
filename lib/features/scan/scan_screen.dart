@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../models/auracast_location.dart';
 import '../../models/scan_result.dart';
+import '../../models/verification_request.dart';
+import '../../repositories/verification_repository.dart';
 import '../../services/native_scan_service.dart';
+import '../locations/sample_locations.dart';
 
 class ScanScreen extends StatefulWidget {
   const ScanScreen({super.key});
@@ -13,8 +17,10 @@ class ScanScreen extends StatefulWidget {
 
 class _ScanScreenState extends State<ScanScreen> {
   final _scanService = const NativeScanService();
+  final _verificationRepository = const VerificationRepository();
   DeviceCapabilityResult? _capabilities;
   List<ScanResult> _results = const [];
+  List<VerificationRequest> _verificationRequests = const [];
   var _isLoadingCapabilities = false;
   var _isScanning = false;
   String? _message;
@@ -64,6 +70,11 @@ class _ScanScreenState extends State<ScanScreen> {
               icon: const Icon(Icons.stop),
               label: const Text('Stop'),
             ),
+            OutlinedButton.icon(
+              onPressed: _isScanning ? null : _addDemoResult,
+              icon: const Icon(Icons.science_outlined),
+              label: const Text('Demo result'),
+            ),
           ],
         ),
         if (_message != null) ...[
@@ -92,7 +103,21 @@ class _ScanScreenState extends State<ScanScreen> {
             ),
           )
         else
-          for (final result in _results) _ScanResultTile(result: result),
+          for (final result in _results)
+            _ScanResultTile(
+              result: result,
+              onSubmit: () => _submitEvidence(result),
+            ),
+        if (_verificationRequests.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Text(
+            'Submitted evidence',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          for (final request in _verificationRequests)
+            _VerificationRequestTile(request: request),
+        ],
       ],
     );
   }
@@ -164,6 +189,47 @@ class _ScanScreenState extends State<ScanScreen> {
     } on Object catch (error) {
       setState(() => _message = 'Stop scan failed: $error');
     }
+  }
+
+  void _addDemoResult() {
+    final now = DateTime.now();
+    setState(() {
+      _results = [
+        ScanResult(
+          id: 'demo-${now.millisecondsSinceEpoch}',
+          broadcastName: 'Demo Auracast candidate',
+          rssi: -61,
+          detectedAt: now,
+          deviceName: 'Demo transmitter',
+          rawAdvertisementHex: '02010603034F18',
+          deviceAddress: 'DE:MO:00:00:00:01',
+          serviceUuids: const ['0000184f-0000-1000-8000-00805f9b34fb'],
+        ),
+        ..._results,
+      ];
+      _message = 'Demo scan result added for local submission testing.';
+    });
+  }
+
+  Future<void> _submitEvidence(ScanResult result) async {
+    final location = await showModalBottomSheet<AuracastLocation>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => const _LocationPickerSheet(),
+    );
+    if (location == null || !mounted) {
+      return;
+    }
+
+    final request = _verificationRepository.createLocalRequest(
+      scanResult: result,
+      location: location,
+    );
+    setState(() {
+      _verificationRequests = [request, ..._verificationRequests];
+      _message = 'Evidence submitted locally for ${location.name}.';
+    });
   }
 }
 
@@ -265,9 +331,13 @@ class _CapabilityChip extends StatelessWidget {
 }
 
 class _ScanResultTile extends StatelessWidget {
-  const _ScanResultTile({required this.result});
+  const _ScanResultTile({
+    required this.result,
+    required this.onSubmit,
+  });
 
   final ScanResult result;
+  final VoidCallback onSubmit;
 
   @override
   Widget build(BuildContext context) {
@@ -276,17 +346,86 @@ class _ScanResultTile extends StatelessWidget {
         : '${result.rawAdvertisementHex.substring(0, 24)}...';
 
     return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(0, 0, 12, 12),
+        child: Column(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.bluetooth_outlined),
+              title: Text(result.broadcastName.isEmpty
+                  ? 'Unnamed Bluetooth signal'
+                  : result.broadcastName),
+              subtitle: Text(
+                'RSSI ${result.rssi} dBm\n'
+                '${result.deviceAddress}\n'
+                '$rawPreview',
+              ),
+              isThreeLine: true,
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                onPressed: onSubmit,
+                icon: const Icon(Icons.upload_file_outlined),
+                label: const Text('Submit evidence'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _VerificationRequestTile extends StatelessWidget {
+  const _VerificationRequestTile({required this.request});
+
+  final VerificationRequest request;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
       child: ListTile(
-        leading: const Icon(Icons.bluetooth_outlined),
-        title: Text(result.broadcastName.isEmpty
-            ? 'Unnamed Bluetooth signal'
-            : result.broadcastName),
+        leading: const Icon(Icons.fact_check_outlined),
+        title: Text(request.locationName),
         subtitle: Text(
-          'RSSI ${result.rssi} dBm\n'
-          '${result.deviceAddress}\n'
-          '$rawPreview',
+          '${request.broadcastName}\nStatus: ${request.status.name}',
         ),
         isThreeLine: true,
+      ),
+    );
+  }
+}
+
+class _LocationPickerSheet extends StatelessWidget {
+  const _LocationPickerSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    final height = MediaQuery.sizeOf(context).height * 0.56;
+
+    return SafeArea(
+      child: SizedBox(
+        height: height,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          children: [
+            Text(
+              'Choose location',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            for (final location in sampleLocations)
+              Card(
+                child: ListTile(
+                  leading: const Icon(Icons.place_outlined),
+                  title: Text(location.name),
+                  subtitle: Text(location.city),
+                  onTap: () => Navigator.of(context).pop(location),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
