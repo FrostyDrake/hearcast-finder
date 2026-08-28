@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/auracast_location.dart';
+import '../../providers/location_providers.dart';
 import 'location_details_screen.dart';
 import 'location_filters.dart';
-import 'sample_locations.dart';
 
-class LocationListScreen extends StatefulWidget {
+class LocationListScreen extends ConsumerStatefulWidget {
   const LocationListScreen({super.key});
 
   @override
-  State<LocationListScreen> createState() => _LocationListScreenState();
+  ConsumerState<LocationListScreen> createState() => _LocationListScreenState();
 }
 
-class _LocationListScreenState extends State<LocationListScreen> {
+class _LocationListScreenState extends ConsumerState<LocationListScreen> {
   final _searchController = TextEditingController();
   LocationCategory? _selectedCategory;
 
@@ -24,22 +25,18 @@ class _LocationListScreenState extends State<LocationListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final locations = filterLocations(
-      locations: sampleLocations,
-      query: _searchController.text,
-      category: _selectedCategory,
-    );
+    final locationsAsync = ref.watch(verifiedLocationsProvider);
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         Text(
-          'Candidate locations',
+          'Verified locations',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 8),
         const Text(
-          'These examples are local-only while the data model is being shaped.',
+          'Places an admin has confirmed offer Auracast broadcast audio.',
         ),
         const SizedBox(height: 16),
         TextField(
@@ -74,14 +71,34 @@ class _LocationListScreenState extends State<LocationListScreen> {
           },
         ),
         const SizedBox(height: 16),
-        if (locations.isEmpty)
-          const _EmptyLocationsState()
-        else
-          for (final location in locations)
-            LocationCard(
-              location: location,
-              onTap: () => _openLocationDetails(context, location),
-            ),
+        locationsAsync.when(
+          data: (locations) {
+            final filtered = filterLocations(
+              locations: locations,
+              query: _searchController.text,
+              category: _selectedCategory,
+            );
+
+            if (filtered.isEmpty) {
+              return const _EmptyLocationsState();
+            }
+
+            return Column(
+              children: [
+                for (final location in filtered)
+                  LocationCard(
+                    location: location,
+                    onTap: () => _openLocationDetails(context, location),
+                  ),
+              ],
+            );
+          },
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (error, stackTrace) => _LocationsErrorState(error: error),
+        ),
       ],
     );
   }
@@ -135,6 +152,23 @@ class _EmptyLocationsState extends StatelessWidget {
         leading: Icon(Icons.search_off_outlined),
         title: Text('No matching locations'),
         subtitle: Text('Try a different search or category.'),
+      ),
+    );
+  }
+}
+
+class _LocationsErrorState extends StatelessWidget {
+  const _LocationsErrorState({required this.error});
+
+  final Object error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.error_outline),
+        title: const Text('Could not load locations'),
+        subtitle: Text('$error'),
       ),
     );
   }

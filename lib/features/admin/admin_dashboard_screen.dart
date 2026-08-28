@@ -1,35 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../models/scan_result.dart';
-import '../../models/verification_request.dart';
-import '../locations/sample_locations.dart';
+import '../../core/utils/validators.dart';
+import '../../models/auracast_location.dart';
+import '../../providers/firebase_providers.dart';
+import '../../providers/location_providers.dart';
+import '../../services/admin_location_service.dart';
 
-class AdminDashboardScreen extends StatefulWidget {
+class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
 
   @override
-  State<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
+  ConsumerState<AdminDashboardScreen> createState() => _AdminDashboardScreenState();
 }
 
-class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  late List<VerificationRequest> _requests = [
-    VerificationRequest.local(
-      scanResult: ScanResult(
-        id: 'admin-demo-scan',
-        broadcastName: 'Main Hall Auracast',
-        rssi: -58,
-        detectedAt: DateTime.utc(2026, 8, 23),
-      ),
-      location: sampleLocations.first,
-      createdAt: DateTime.utc(2026, 8, 23),
-    ),
-  ];
+class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _cityController = TextEditingController();
+  LocationCategory _category = LocationCategory.conference;
+  var _isCreating = false;
+  var _busyLocationId = '';
+  String? _message;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _addressController.dispose();
+    _cityController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final pendingCount = _requests
-        .where((request) => request.status == VerificationStatus.pending)
-        .length;
+    final candidatesAsync = ref.watch(candidateLocationsProvider);
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -40,60 +45,253 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Local review queue for checking scan evidence before locations become verified.',
+          'Approve or reject locations owners have submitted, or add one directly.',
         ),
         const SizedBox(height: 16),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.pending_actions_outlined),
-            title: Text('$pendingCount pending verification'),
-            subtitle: const Text('Firestore-backed moderation comes later.'),
+        candidatesAsync.when(
+          data: (candidates) {
+            return Card(
+              child: ListTile(
+                leading: const Icon(Icons.pending_actions_outlined),
+                title: Text('${candidates.length} pending location${candidates.length == 1 ? '' : 's'}'),
+                subtitle: const Text('Backed by Firestore and Cloud Functions.'),
+              ),
+            );
+          },
+          loading: () => const Card(
+            child: ListTile(
+              leading: CircularProgressIndicator(),
+              title: Text('Loading pending locations…'),
+            ),
+          ),
+          error: (error, stackTrace) => Card(
+            child: ListTile(
+              leading: const Icon(Icons.error_outline),
+              title: const Text('Could not load pending locations'),
+              subtitle: Text('$error'),
+            ),
           ),
         ),
         const SizedBox(height: 16),
         Text(
-          'Verification requests',
+          'Pending locations',
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
-        for (final request in _requests)
-          _VerificationReviewTile(
-            request: request,
-            onApprove: () => _setStatus(request, VerificationStatus.approved),
-            onReject: () => _setStatus(request, VerificationStatus.rejected),
-          ),
+        candidatesAsync.when(
+          data: (candidates) {
+            if (candidates.isEmpty) {
+              return const Card(
+                child: ListTile(
+                  leading: Icon(Icons.check_circle_outline),
+                  title: Text('Nothing waiting for review'),
+                ),
+              );
+            }
+
+            return Column(
+              children: [
+                for (final location in candidates)
+                  _CandidateReviewTile(
+                    location: location,
+                    isBusy: _busyLocationId == location.id,
+                    onApprove: () => _approve(location),
+                    onReject: () => _reject(location),
+                  ),
+              ],
+            );
+          },
+          loading: () => const SizedBox.shrink(),
+          error: (error, stackTrace) => const SizedBox.shrink(),
+        ),
+        const SizedBox(height: 24),
+        _buildCreateLocationForm(context),
       ],
     );
   }
 
-  void _setStatus(VerificationRequest request, VerificationStatus status) {
+  Widget _buildCreateLocationForm(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Add a verified location',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Location name',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) =>
+                    Validators.requiredText(value, 'Location name'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _addressController,
+                decoration: const InputDecoration(
+                  labelText: 'Address',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => Validators.requiredText(value, 'Address'),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _cityController,
+                decoration: const InputDecoration(
+                  labelText: 'City',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) => Validators.requiredText(value, 'City'),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<LocationCategory>(
+                initialValue: _category,
+                decoration: const InputDecoration(
+                  labelText: 'Category',
+                  border: OutlineInputBorder(),
+                ),
+                items: LocationCategory.values
+                    .map(
+                      (category) => DropdownMenuItem(
+                        value: category,
+                        child: Text(category.label),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (category) {
+                  if (category != null) {
+                    setState(() => _category = category);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                onPressed: _isCreating ? null : _createLocation,
+                icon: _isCreating
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add_business_outlined),
+                label: const Text('Create verified location'),
+              ),
+              if (_message != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _message!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _approve(AuracastLocation location) async {
+    setState(() => _busyLocationId = location.id);
+    try {
+      await ref.read(adminLocationServiceProvider).approveLocation(location.id);
+    } on AdminActionException catch (error) {
+      _showSnackBar(error.message);
+    } on Object catch (error) {
+      _showSnackBar('Could not approve: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _busyLocationId = '');
+      }
+    }
+  }
+
+  Future<void> _reject(AuracastLocation location) async {
+    setState(() => _busyLocationId = location.id);
+    try {
+      await ref.read(adminLocationServiceProvider).deleteLocation(location.id);
+    } on AdminActionException catch (error) {
+      _showSnackBar(error.message);
+    } on Object catch (error) {
+      _showSnackBar('Could not reject: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _busyLocationId = '');
+      }
+    }
+  }
+
+  Future<void> _createLocation() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
     setState(() {
-      _requests = [
-        for (final current in _requests)
-          if (current.id == request.id)
-            current.copyWith(status: status)
-          else
-            current,
-      ];
+      _isCreating = true;
+      _message = null;
     });
+
+    try {
+      await ref.read(adminLocationServiceProvider).createLocation(
+            name: _nameController.text.trim(),
+            address: _addressController.text.trim(),
+            city: _cityController.text.trim(),
+            category: _category,
+            latitude: 0,
+            longitude: 0,
+          );
+
+      if (!mounted) {
+        return;
+      }
+      _nameController.clear();
+      _addressController.clear();
+      _cityController.clear();
+      setState(() => _message = 'Location created and verified.');
+    } on AdminActionException catch (error) {
+      if (mounted) {
+        setState(() => _message = error.message);
+      }
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _message = 'Could not create: $error');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isCreating = false);
+      }
+    }
+  }
+
+  void _showSnackBar(String message) {
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
-class _VerificationReviewTile extends StatelessWidget {
-  const _VerificationReviewTile({
-    required this.request,
+class _CandidateReviewTile extends StatelessWidget {
+  const _CandidateReviewTile({
+    required this.location,
+    required this.isBusy,
     required this.onApprove,
     required this.onReject,
   });
 
-  final VerificationRequest request;
+  final AuracastLocation location;
+  final bool isBusy;
   final VoidCallback onApprove;
   final VoidCallback onReject;
 
   @override
   Widget build(BuildContext context) {
-    final isPending = request.status == VerificationStatus.pending;
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(0, 0, 12, 12),
@@ -102,31 +300,35 @@ class _VerificationReviewTile extends StatelessWidget {
           children: [
             ListTile(
               leading: const Icon(Icons.fact_check_outlined),
-              title: Text(request.locationName),
+              title: Text(location.name),
               subtitle: Text(
-                '${request.broadcastName}\nStatus: ${request.status.name}',
+                '${location.category.label} • ${location.city}\n${location.address}',
               ),
               isThreeLine: true,
             ),
-            if (isPending)
-              Align(
-                alignment: Alignment.centerRight,
-                child: Wrap(
-                  spacing: 8,
-                  children: [
-                    OutlinedButton.icon(
-                      onPressed: onReject,
-                      icon: const Icon(Icons.close),
-                      label: const Text('Reject'),
-                    ),
-                    FilledButton.icon(
-                      onPressed: onApprove,
-                      icon: const Icon(Icons.check),
-                      label: const Text('Approve'),
-                    ),
-                  ],
-                ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: isBusy ? null : onReject,
+                    icon: const Icon(Icons.close),
+                    label: const Text('Reject'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: isBusy ? null : onApprove,
+                    icon: isBusy
+                        ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check),
+                    label: const Text('Approve'),
+                  ),
+                ],
               ),
+            ),
           ],
         ),
       ),

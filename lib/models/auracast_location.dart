@@ -51,6 +51,7 @@ class AuracastLocation {
     required this.latitude,
     required this.longitude,
     this.notes = '',
+    this.ownerId = '',
   });
 
   final String id;
@@ -62,6 +63,7 @@ class AuracastLocation {
   final double latitude;
   final double longitude;
   final String notes;
+  final String ownerId;
 
   factory AuracastLocation.fromMap(String id, Map<String, dynamic> map) {
     return AuracastLocation(
@@ -76,6 +78,7 @@ class AuracastLocation {
       latitude: (map['latitude'] as num?)?.toDouble() ?? 0,
       longitude: (map['longitude'] as num?)?.toDouble() ?? 0,
       notes: map['notes'] as String? ?? '',
+      ownerId: map['ownerId'] as String? ?? '',
     );
   }
 
@@ -89,6 +92,7 @@ class AuracastLocation {
       'latitude': latitude,
       'longitude': longitude,
       'notes': notes,
+      'ownerId': ownerId,
     };
   }
 

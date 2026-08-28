@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../models/auracast_location.dart';
+import '../../providers/location_providers.dart';
 import '../../services/map_service.dart';
-import '../locations/sample_locations.dart';
 
-class MapScreen extends StatefulWidget {
+class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
 
   @override
-  State<MapScreen> createState() => _MapScreenState();
+  ConsumerState<MapScreen> createState() => _MapScreenState();
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends ConsumerState<MapScreen> {
   var _showInteractiveMap = false;
 
   @override
   Widget build(BuildContext context) {
-    final markers = MapService.markersForLocations(sampleLocations);
+    final locationsAsync = ref.watch(verifiedLocationsProvider);
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -40,26 +41,48 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        if (_showInteractiveMap)
-          _InteractiveMap(markers: markers)
-        else
-          _StaticMapSummary(markers: markers),
-        const SizedBox(height: 16),
-        Text(
-          'Mapped candidate locations',
-          style: Theme.of(context).textTheme.titleMedium,
+        locationsAsync.when(
+          data: (locations) {
+            final markers = MapService.markersForLocations(locations);
+
+            return Column(
+              children: [
+                if (_showInteractiveMap)
+                  _InteractiveMap(locations: locations, markers: markers)
+                else
+                  _StaticMapSummary(markers: markers),
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Mapped locations',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                if (locations.isEmpty)
+                  const _EmptyMapState()
+                else
+                  for (final location in locations)
+                    _MapLocationTile(location: location),
+              ],
+            );
+          },
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (error, stackTrace) => _MapErrorState(error: error),
         ),
-        const SizedBox(height: 8),
-        for (final location in sampleLocations)
-          _MapLocationTile(location: location),
       ],
     );
   }
 }
 
 class _InteractiveMap extends StatelessWidget {
-  const _InteractiveMap({required this.markers});
+  const _InteractiveMap({required this.locations, required this.markers});
 
+  final List<AuracastLocation> locations;
   final Set<Marker> markers;
 
   @override
@@ -69,8 +92,7 @@ class _InteractiveMap extends StatelessWidget {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: GoogleMap(
-          initialCameraPosition:
-              MapService.cameraForLocations(sampleLocations),
+          initialCameraPosition: MapService.cameraForLocations(locations),
           markers: markers,
           myLocationButtonEnabled: false,
           zoomControlsEnabled: false,
@@ -125,6 +147,38 @@ class _MapLocationTile extends StatelessWidget {
           '${location.city} • ${location.latitude.toStringAsFixed(4)}, '
           '${location.longitude.toStringAsFixed(4)}',
         ),
+      ),
+    );
+  }
+}
+
+class _EmptyMapState extends StatelessWidget {
+  const _EmptyMapState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Card(
+      child: ListTile(
+        leading: Icon(Icons.location_off_outlined),
+        title: Text('No verified locations yet'),
+        subtitle: Text('Approved locations will appear here once an admin verifies them.'),
+      ),
+    );
+  }
+}
+
+class _MapErrorState extends StatelessWidget {
+  const _MapErrorState({required this.error});
+
+  final Object error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.error_outline),
+        title: const Text('Could not load the map'),
+        subtitle: Text('$error'),
       ),
     );
   }

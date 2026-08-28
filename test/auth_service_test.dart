@@ -2,28 +2,54 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hearcast_finder/services/auth_service.dart';
 
 void main() {
-  const service = AuthService();
+  group('AuthService.validateCredentials', () {
+    test('accepts a valid registration', () {
+      final error = AuthService.validateCredentials(
+        name: 'Andrei',
+        email: 'andrei@example.com',
+        password: 'password123',
+      );
 
-  test('register returns a local user for valid input', () async {
-    final user = await service.register(
-      name: 'Andrei',
-      email: 'andrei@example.com',
-      password: 'password123',
-    );
+      expect(error, isNull);
+    });
 
-    expect(user.name, 'Andrei');
-    expect(user.email, 'andrei@example.com');
-    expect(user.role.name, 'user');
-  });
+    test('accepts a valid sign-in (no name required)', () {
+      final error = AuthService.validateCredentials(
+        email: 'andrei@example.com',
+        password: 'password123',
+      );
 
-  test('register rejects weak passwords', () {
-    expect(
-      () => service.register(
+      expect(error, isNull);
+    });
+
+    test('rejects weak passwords', () {
+      final error = AuthService.validateCredentials(
         name: 'Andrei',
         email: 'andrei@example.com',
         password: 'short',
-      ),
-      throwsA(isA<AuthValidationException>()),
-    );
+      );
+
+      expect(error, isNotNull);
+    });
+
+    test('rejects an invalid email', () {
+      final error = AuthService.validateCredentials(
+        name: 'Andrei',
+        email: 'not-an-email',
+        password: 'password123',
+      );
+
+      expect(error, isNotNull);
+    });
+
+    test('requires a name only when registering', () {
+      final error = AuthService.validateCredentials(
+        name: '',
+        email: 'andrei@example.com',
+        password: 'password123',
+      );
+
+      expect(error, isNotNull);
+    });
   });
 }

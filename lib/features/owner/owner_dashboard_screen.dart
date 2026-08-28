@@ -1,22 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/validators.dart';
 import '../../models/auracast_location.dart';
+import '../../providers/firebase_providers.dart';
+import '../../providers/location_providers.dart';
+import '../../providers/session_providers.dart';
 
-class OwnerDashboardScreen extends StatefulWidget {
+class OwnerDashboardScreen extends ConsumerStatefulWidget {
   const OwnerDashboardScreen({super.key});
 
   @override
-  State<OwnerDashboardScreen> createState() => _OwnerDashboardScreenState();
+  ConsumerState<OwnerDashboardScreen> createState() => _OwnerDashboardScreenState();
 }
 
-class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
+class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _addressController = TextEditingController();
   final _cityController = TextEditingController();
   LocationCategory _category = LocationCategory.conference;
-  final List<AuracastLocation> _ownerLocations = [];
+  var _isSubmitting = false;
+  String? _message;
 
   @override
   void dispose() {
@@ -28,6 +33,8 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final myLocationsAsync = ref.watch(myLocationsProvider);
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -37,7 +44,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Local owner workflow for drafting new Auracast candidate locations before Firestore persistence.',
+          'Submit a candidate Auracast location for an admin to review.',
         ),
         const SizedBox(height: 16),
         _buildLocationForm(context),
@@ -47,27 +54,47 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
-        if (_ownerLocations.isEmpty)
-          const Card(
-            child: ListTile(
-              leading: Icon(Icons.add_location_alt_outlined),
-              title: Text('No owner locations yet'),
-              subtitle: Text('Create a local draft above.'),
-            ),
-          )
-        else
-          for (final location in _ownerLocations)
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.place_outlined),
-                title: Text(location.name),
-                subtitle: Text(
-                  '${location.category.label} • ${location.city}\n'
-                  '${location.status.label}',
+        myLocationsAsync.when(
+          data: (locations) {
+            if (locations.isEmpty) {
+              return const Card(
+                child: ListTile(
+                  leading: Icon(Icons.add_location_alt_outlined),
+                  title: Text('No owner locations yet'),
+                  subtitle: Text('Create a draft above.'),
                 ),
-                isThreeLine: true,
-              ),
+              );
+            }
+
+            return Column(
+              children: [
+                for (final location in locations)
+                  Card(
+                    child: ListTile(
+                      leading: const Icon(Icons.place_outlined),
+                      title: Text(location.name),
+                      subtitle: Text(
+                        '${location.category.label} • ${location.city}\n'
+                        '${location.status.label}',
+                      ),
+                      isThreeLine: true,
+                    ),
+                  ),
+              ],
+            );
+          },
+          loading: () => const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (error, stackTrace) => Card(
+            child: ListTile(
+              leading: const Icon(Icons.error_outline),
+              title: const Text('Could not load your locations'),
+              subtitle: Text('$error'),
             ),
+          ),
+        ),
       ],
     );
   }
@@ -136,10 +163,22 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
-                onPressed: _submitLocation,
-                icon: const Icon(Icons.add_location_alt_outlined),
+                onPressed: _isSubmitting ? null : _submitLocation,
+                icon: _isSubmitting
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add_location_alt_outlined),
                 label: const Text('Create draft'),
               ),
+              if (_message != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _message!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ],
             ],
           ),
         ),
@@ -147,21 +186,28 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     );
   }
 
-  void _submitLocation() {
+  Future<void> _submitLocation() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
     }
 
-    final id = _nameController.text
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    final owner = ref.read(currentAppUserProvider).valueOrNull;
+    if (owner == null) {
+      setState(() => _message = 'You need to be signed in to submit a location.');
+      return;
+    }
 
     setState(() {
-      _ownerLocations.insert(
-        0,
+      _isSubmitting = true;
+      _message = null;
+    });
+
+    final repository = ref.read(locationRepositoryProvider);
+
+    try {
+      await repository.saveCandidateLocation(
         AuracastLocation(
-          id: id,
+          id: repository.newLocationId(),
           name: _nameController.text.trim(),
           address: _addressController.text.trim(),
           city: _cityController.text.trim(),
@@ -169,12 +215,26 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           status: LocationStatus.candidate,
           latitude: 0,
           longitude: 0,
-          notes: 'Owner submitted local draft.',
+          notes: 'Owner submitted, awaiting admin review.',
+          ownerId: owner.id,
         ),
       );
+
+      if (!mounted) {
+        return;
+      }
       _nameController.clear();
       _addressController.clear();
       _cityController.clear();
-    });
+      setState(() => _message = 'Submitted for admin review.');
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _message = 'Could not submit: $error');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 }

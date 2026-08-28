@@ -175,3 +175,72 @@ Problemer:
 Naeste:
 
 - Commit den afsluttende prototype, test paa telefon, og planlaeg rigtig backend-integration som separat production hardening.
+
+## 2026-08-25
+
+Implementeret:
+
+- Koerte FlutterFire CLI mod det eksisterende Firebase-projekt `hearcast-85115` og genererede `firebase_options.dart` + `google-services.json`.
+- Tilfojede `Firebase.initializeApp()` i `main.dart`.
+- Tilfojede `flutter_riverpod` til state management.
+- Skrev `AuthService` om fra lokal fake-login til rigtig Firebase Authentication (sign in, register, sign out) med brugervenlige fejlbeskeder.
+- Tilfojede `AuthGate`, der laaser hele appen bag login, saa ingen faner kan tilgaas foer man er logget ind.
+- Flyttede login/register ud af Profile-fanen og ind i sit eget auth-flow.
+- Foerste sign-in opretter nu automatisk `users/{uid}`-dokumentet i Firestore med default-rolle `user`.
+- Rettede en fejl hvor INTERNET-permission kun laa i debug-manifestet, hvilket ville have blokeret release-builds fra at naa Firebase.
+- Opdaterede tests til den nye auth-opsaetning og fjernede den nu forældede Firebase-setup-status test. Alle tests og en debug-build gaar igennem uden fejl.
+
+Problemer:
+
+- Kort, lokationsliste og admin/owner-dashboards bruger stadig lokale testdata; rigtig Firestore-integration mangler stadig.
+- Der findes endnu ingen Cloud Functions, saa admin-CRUD er stadig kun lokalt.
+- Login er endnu ikke testet paa en fysisk telefon.
+
+Naeste:
+
+- Test login paa fysisk Android 13+ telefon (register, log ud, log ind, log ud igen).
+- Koble kort, lokationsliste og admin/owner-flows til rigtige Firestore-queries.
+- Byg Cloud Functions til admin-CRUD (create/update/delete med rollekontrol).
+
+## 2026-08-25 - Firestore-integration og Cloud Functions
+
+Implementeret:
+
+- Tilfojede `ownerId` til `AuracastLocation` og nye scoped Firestore-queries i `LocationRepository` (`watchVerifiedLocations`, `watchCandidateLocations`, `watchLocationsByOwner`, `newLocationId`).
+- Erstattede `sampleLocations` med rigtige Firestore-streams i Map- og Locations-fanen (kun `status: verified` vises for almindelige brugere).
+- Koblede Owner-fanen til rigtig Firestore: et indsendt draft skrives nu direkte til `locations` med `status: candidate` og `ownerId`, og "Submitted locations" viser brugerens egne indsendelser live.
+- Byggede et `functions/`-projekt (Node 22, firebase-admin + firebase-functions v2) med tre callable Cloud Functions: `createLocation`, `updateLocation`, `deleteLocation`. Alle tre tjekker `users/{uid}.role == 'admin'` foer de skriver, og bruger Admin SDK'en til at omgaa `firestore.rules`' `allow update, delete: if false` paa locations-collectionen.
+- Deployede de tre functions til `hearcast-85115` (region us-central1, Node 22).
+- Tilfojede `cloud_functions`-pakken og en `AdminLocationService`, der wrapper de tre callables med brugervenlige fejlbeskeder.
+- Koblede Admin-fanen til rigtig data: viser candidate-locations fra Firestore, Approve kalder `updateLocation` (status -> verified), Reject kalder `deleteLocation`, og der er nu ogsaa en "Add a verified location"-formular, der kalder `createLocation` direkte.
+- Seedede 25 rigtige testlokationer (fordelt over Kobenhavn, Aarhus, Odense og Aalborg, alle otte kategorier repraesenteret) via en midlertidig, hemmelighedsbeskyttet devTools-funktion, som blev fjernet igen straks efter brug.
+- Tilfojede `fake_cloud_firestore` som devDependency, saa widget-tests kan kore et rigtigt Firestore-lignende write/read-flow (Owner-draft-testen) uden at ramme netvaerket.
+- Opdaterede tests til den nye datamodel; alle tests, `flutter analyze` og en debug-build gaar igennem uden fejl.
+
+Problemer:
+
+- Der findes stadig ingen admin-bruger i Firestore, saa Admin-fanen kan ikke godkende noget for rigtigt endnu foer en konto faar `role: admin` (skal saettes manuelt i Firebase Console eller via en senere promote-funktion).
+- Scanresultater og verification requests er stadig kun lokale i UI'en; det kommer med naeste skridt.
+- Cloud Functions er kun testet via `flutter analyze`/`flutter test` og manuel deploy-verifikation, ikke med en fuld emulator-baseret integrationstest endnu.
+- Firestore-rules begraenser ikke laesning til kun verificerede lokationer for almindelige brugere (det styres i stedet af app-forespoergslen); en admin-rolle-tjek paa laesning kunne styrke dette senere.
+
+Naeste:
+
+- Saet en foerste bruger til `role: admin` og gennemfoer en fuld godkend/afvis-test paa fysisk telefon.
+- Gem verification requests fra scan-fanen rigtigt i Firestore, i stedet for kun lokalt.
+- Tilfoj brugerens position paa kortet, og gennemgaa tom-/fejltilstande paa tvaers af appen.
+
+## 2026-08-25 - Google Maps API key
+
+Implementeret:
+
+- Tilfojede `android/app/src/main/res/values/google_maps_api.xml` og `com.google.android.geo.API_KEY` meta-data i AndroidManifest.xml, som ikke fandtes i dette repo foer.
+- Genbrugte den eksisterende Firebase Android-noegle (samme projekt, `hearcast-85115`) i stedet for at oprette en separat Maps-noegle.
+
+Problemer:
+
+- Kortet virker foerst, naar "Maps SDK for Android" er aktiveret for `hearcast-85115` i Google Cloud Console, hvilket kraever et manuelt klik der (ikke noget der kan automatiseres via Firebase CLI).
+
+Naeste:
+
+- Bekraeft at det interaktive kort rent faktisk virker paa telefonen, naar API'et er aktiveret.

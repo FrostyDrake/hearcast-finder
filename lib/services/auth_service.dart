@@ -1,64 +1,106 @@
+import 'package:firebase_auth/firebase_auth.dart';
+
 import '../core/utils/validators.dart';
-import '../models/app_user.dart';
 
 class AuthService {
-  const AuthService();
+  AuthService({FirebaseAuth? firebaseAuth})
+      : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
-  Future<AppUser> register({
+  final FirebaseAuth _firebaseAuth;
+
+  Stream<User?> authStateChanges() => _firebaseAuth.authStateChanges();
+
+  User? get currentUser => _firebaseAuth.currentUser;
+
+  Future<User> register({
     required String name,
     required String email,
     required String password,
   }) async {
-    _validateCredentials(
+    final validationError = validateCredentials(
       name: name,
       email: email,
       password: password,
-      requireName: true,
     );
+    if (validationError != null) {
+      throw AuthValidationException(validationError);
+    }
 
-    return AppUser(
-      id: _localUserId(email),
-      name: name.trim(),
-      email: email.trim(),
-    );
-  }
-
-  Future<AppUser> signIn({
-    required String email,
-    required String password,
-  }) async {
-    _validateCredentials(
-      name: 'Local user',
-      email: email,
-      password: password,
-      requireName: false,
-    );
-
-    return AppUser(
-      id: _localUserId(email),
-      name: 'Local user',
-      email: email.trim(),
-    );
-  }
-
-  void _validateCredentials({
-    required String name,
-    required String email,
-    required String password,
-    required bool requireName,
-  }) {
-    final nameError = requireName ? Validators.requiredText(name, 'Name') : null;
-    final emailError = Validators.email(email);
-    final passwordError = Validators.password(password);
-
-    final firstError = nameError ?? emailError ?? passwordError;
-    if (firstError != null) {
-      throw AuthValidationException(firstError);
+    try {
+      final credential = await _firebaseAuth.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+      final user = credential.user;
+      if (user == null) {
+        throw const AuthValidationException('Could not create the account.');
+      }
+      await user.updateDisplayName(name.trim());
+      return user;
+    } on FirebaseAuthException catch (error) {
+      throw AuthValidationException(_messageForFirebaseError(error));
     }
   }
 
-  String _localUserId(String email) {
-    return 'local-${email.trim().toLowerCase().hashCode.abs()}';
+  Future<User> signIn({
+    required String email,
+    required String password,
+  }) async {
+    final validationError = validateCredentials(email: email, password: password);
+    if (validationError != null) {
+      throw AuthValidationException(validationError);
+    }
+
+    try {
+      final credential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+      final user = credential.user;
+      if (user == null) {
+        throw const AuthValidationException('Could not sign in.');
+      }
+      return user;
+    } on FirebaseAuthException catch (error) {
+      throw AuthValidationException(_messageForFirebaseError(error));
+    }
+  }
+
+  Future<void> signOut() => _firebaseAuth.signOut();
+
+  /// Pure client-side validation, checked before any Firebase call is made.
+  /// [name] is only required when registering a new account.
+  static String? validateCredentials({
+    required String email,
+    required String password,
+    String? name,
+  }) {
+    final nameError = name != null ? Validators.requiredText(name, 'Name') : null;
+    final emailError = Validators.email(email);
+    final passwordError = Validators.password(password);
+
+    return nameError ?? emailError ?? passwordError;
+  }
+
+  String _messageForFirebaseError(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'email-already-in-use':
+        return 'An account already exists for that email.';
+      case 'invalid-email':
+        return 'Enter a valid email address.';
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return 'Incorrect email or password.';
+      case 'weak-password':
+        return 'Password must be at least 8 characters.';
+      case 'network-request-failed':
+        return 'No internet connection. Check your network and try again.';
+      case 'too-many-requests':
+        return 'Too many attempts. Wait a moment and try again.';
+      default:
+        return error.message ?? 'Something went wrong. Please try again.';
+    }
   }
 }
 
