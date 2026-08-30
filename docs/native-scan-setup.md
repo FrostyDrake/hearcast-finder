@@ -1,6 +1,6 @@
 # Native Scan Setup
 
-Dag 8 tilfojer Android-platformen og den foerste native Bluetooth scan bridge.
+Denne omgang (18. august 2026) tilfojer Android-platformen og den foerste native Bluetooth scan bridge.
 
 ## Tilfojet Nu
 

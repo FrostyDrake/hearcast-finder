@@ -1,6 +1,6 @@
 # Firebase Setup
 
-Dette dokument beskriver den tidlige Firebase-plan for HearCast Finder. Dag 4 handler kun om fundamentet, ikke fuld login eller Firestore-integration.
+Dette dokument beskriver den tidlige Firebase-plan for HearCast Finder. Denne omgang (14. august 2026) handler kun om fundamentet, ikke fuld login eller Firestore-integration.
 
 ## Tilfojet Nu
 

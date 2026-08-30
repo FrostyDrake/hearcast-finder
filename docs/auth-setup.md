@@ -1,6 +1,6 @@
 # Auth Setup
 
-Dag 11 kobler appen til et rigtigt Firebase-projekt og udskifter det lokale fake login med rigtig Firebase Authentication.
+Denne omgang (25. august 2026) kobler appen til et rigtigt Firebase-projekt og udskifter det lokale fake login med rigtig Firebase Authentication.
 
 ## Tilfojet Nu
 

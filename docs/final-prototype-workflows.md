@@ -1,6 +1,6 @@
 # Final Prototype Workflows
 
-Dag 10 samler de sidste local-only workflows, saa appen kan demonstrere hele MVP-loopen uden rigtig backend.
+Denne omgang (23. august 2026) samler de sidste local-only workflows, saa appen kan demonstrere hele MVP-loopen uden rigtig backend.
 
 ## Admin Review
 

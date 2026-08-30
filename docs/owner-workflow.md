@@ -1,6 +1,6 @@
 # Owner Workflow
 
-Dag 9 tilfojer det foerste owner-flow.
+Denne omgang (22. august 2026) tilfojer det foerste owner-flow.
 
 ## Tilfojet Nu
 

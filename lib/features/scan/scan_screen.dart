@@ -1,28 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/auracast_location.dart';
 import '../../models/scan_result.dart';
 import '../../models/verification_request.dart';
-import '../../repositories/verification_repository.dart';
+import '../../providers/firebase_providers.dart';
+import '../../providers/location_providers.dart';
+import '../../providers/session_providers.dart';
 import '../../services/native_scan_service.dart';
-import '../locations/sample_locations.dart';
 
-class ScanScreen extends StatefulWidget {
+class ScanScreen extends ConsumerStatefulWidget {
   const ScanScreen({super.key});
 
   @override
-  State<ScanScreen> createState() => _ScanScreenState();
+  ConsumerState<ScanScreen> createState() => _ScanScreenState();
 }
 
-class _ScanScreenState extends State<ScanScreen> {
+class _ScanScreenState extends ConsumerState<ScanScreen> {
   final _scanService = const NativeScanService();
-  final _verificationRepository = const VerificationRepository();
   DeviceCapabilityResult? _capabilities;
   List<ScanResult> _results = const [];
-  List<VerificationRequest> _verificationRequests = const [];
+  List<VerificationRequest> _submittedRequests = const [];
   var _isLoadingCapabilities = false;
   var _isScanning = false;
+  var _isSubmitting = false;
   String? _message;
 
   @override
@@ -106,16 +108,17 @@ class _ScanScreenState extends State<ScanScreen> {
           for (final result in _results)
             _ScanResultTile(
               result: result,
+              isSubmitting: _isSubmitting,
               onSubmit: () => _submitEvidence(result),
             ),
-        if (_verificationRequests.isNotEmpty) ...[
+        if (_submittedRequests.isNotEmpty) ...[
           const SizedBox(height: 24),
           Text(
             'Submitted evidence',
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
-          for (final request in _verificationRequests)
+          for (final request in _submittedRequests)
             _VerificationRequestTile(request: request),
         ],
       ],
@@ -222,14 +225,39 @@ class _ScanScreenState extends State<ScanScreen> {
       return;
     }
 
-    final request = _verificationRepository.createLocalRequest(
+    final user = ref.read(currentAppUserProvider).valueOrNull;
+    if (user == null) {
+      setState(() => _message = 'You need to be signed in to submit evidence.');
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    final repository = ref.read(verificationRepositoryProvider);
+    final request = repository.createLocalRequest(
       scanResult: result,
       location: location,
+      userId: user.id,
     );
-    setState(() {
-      _verificationRequests = [request, ..._verificationRequests];
-      _message = 'Evidence submitted locally for ${location.name}.';
-    });
+
+    try {
+      await repository.submitRequest(request);
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _submittedRequests = [request, ..._submittedRequests];
+        _message = 'Evidence submitted for ${location.name}.';
+      });
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _message = 'Could not submit evidence: $error');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 }
 
@@ -333,10 +361,12 @@ class _CapabilityChip extends StatelessWidget {
 class _ScanResultTile extends StatelessWidget {
   const _ScanResultTile({
     required this.result,
+    required this.isSubmitting,
     required this.onSubmit,
   });
 
   final ScanResult result;
+  final bool isSubmitting;
   final VoidCallback onSubmit;
 
   @override
@@ -365,8 +395,13 @@ class _ScanResultTile extends StatelessWidget {
             Align(
               alignment: Alignment.centerRight,
               child: OutlinedButton.icon(
-                onPressed: onSubmit,
-                icon: const Icon(Icons.upload_file_outlined),
+                onPressed: isSubmitting ? null : onSubmit,
+                icon: isSubmitting
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.upload_file_outlined),
                 label: const Text('Submit evidence'),
               ),
             ),
@@ -397,34 +432,55 @@ class _VerificationRequestTile extends StatelessWidget {
   }
 }
 
-class _LocationPickerSheet extends StatelessWidget {
+class _LocationPickerSheet extends ConsumerWidget {
   const _LocationPickerSheet();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locationsAsync = ref.watch(verifiedLocationsProvider);
     final height = MediaQuery.sizeOf(context).height * 0.56;
 
     return SafeArea(
       child: SizedBox(
         height: height,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          children: [
-            Text(
-              'Choose location',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            for (final location in sampleLocations)
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.place_outlined),
-                  title: Text(location.name),
-                  subtitle: Text(location.city),
-                  onTap: () => Navigator.of(context).pop(location),
+        child: locationsAsync.when(
+          data: (locations) {
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              children: [
+                Text(
+                  'Choose location',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
-              ),
-          ],
+                const SizedBox(height: 8),
+                if (locations.isEmpty)
+                  const Card(
+                    child: ListTile(
+                      leading: Icon(Icons.location_off_outlined),
+                      title: Text('No verified locations yet'),
+                      subtitle: Text('Ask an admin to verify one first.'),
+                    ),
+                  )
+                else
+                  for (final location in locations)
+                    Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.place_outlined),
+                        title: Text(location.name),
+                        subtitle: Text(location.city),
+                        onTap: () => Navigator.of(context).pop(location),
+                      ),
+                    ),
+              ],
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stackTrace) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Could not load locations.\n$error'),
+            ),
+          ),
         ),
       ),
     );

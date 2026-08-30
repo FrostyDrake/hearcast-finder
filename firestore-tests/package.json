@@ -1,0 +1,12 @@
+{
+  "name": "firestore-rules-tests",
+  "description": "Security rules tests for HearCast Finder, run against the local Firestore emulator",
+  "private": true,
+  "scripts": {
+    "test": "node --test rules.test.js"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase": "^12.18.0"
+  }
+}

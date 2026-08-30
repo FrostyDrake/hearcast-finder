@@ -6,9 +6,11 @@ import 'package:hearcast_finder/app.dart';
 import 'package:hearcast_finder/features/locations/sample_locations.dart';
 import 'package:hearcast_finder/models/app_user.dart';
 import 'package:hearcast_finder/models/auracast_location.dart';
+import 'package:hearcast_finder/models/verification_request.dart';
 import 'package:hearcast_finder/providers/firebase_providers.dart';
 import 'package:hearcast_finder/providers/location_providers.dart';
 import 'package:hearcast_finder/providers/session_providers.dart';
+import 'package:hearcast_finder/providers/verification_providers.dart';
 
 const _testUser = AppUser(
   id: 'test-uid',
@@ -28,6 +30,7 @@ Widget _signedInApp({
       currentAppUserProvider.overrideWith((ref) => Stream.value(user)),
       verifiedLocationsProvider.overrideWith((ref) => Stream.value(sampleLocations)),
       candidateLocationsProvider.overrideWith((ref) => Stream.value(const [])),
+      pendingVerificationRequestsProvider.overrideWith((ref) => Stream.value(const [])),
       ...extraOverrides,
     ],
     child: const HearCastFinderApp(),
@@ -179,7 +182,11 @@ void main() {
   testWidgets('can submit demo scan evidence locally', (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(_signedInApp());
+
+    final fakeFirestore = FakeFirebaseFirestore();
+    await tester.pumpWidget(_signedInApp(
+      extraOverrides: [firestoreProvider.overrideWithValue(fakeFirestore)],
+    ));
     await tester.pump();
 
     await tester.tap(find.text('Scan'));
@@ -200,8 +207,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('Submitted evidence'), findsOneWidget);
-    expect(find.textContaining('pending'), findsOneWidget);
+    expect(find.textContaining('Submitted evidence'), findsOneWidget);
+
+    final stored = await fakeFirestore.collection('verificationRequests').get();
+    expect(stored.docs, hasLength(1));
+    expect(stored.docs.first.data()['status'], VerificationStatus.pending.name);
+    expect(stored.docs.first.data()['userId'], _testUser.id);
   });
 
   testWidgets('can create an owner location draft', (tester) async {
@@ -271,6 +282,7 @@ void main() {
     expect(find.text('Admin review'), findsOneWidget);
     expect(find.text('1 pending location'), findsOneWidget);
     expect(find.text('Library Hall'), findsOneWidget);
+    expect(find.text('No verification requests pending'), findsOneWidget);
 
     // No Cloud Functions backend is reachable in a widget test — tapping
     // Approve must fail gracefully (a snackbar), never crash the app.

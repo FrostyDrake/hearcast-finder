@@ -244,3 +244,35 @@ Problemer:
 Naeste:
 
 - Bekraeft at det interaktive kort rent faktisk virker paa telefonen, naar API'et er aktiveret.
+
+## 2026-08-25 - Foerste admin-konto
+
+Implementeret:
+
+- Oprettede en test-admin-konto (`admin@hearcast.test`) via en midlertidig, hemmelighedsbeskyttet Cloud Function, som satte `role: admin` i Firestore. Funktionen blev fjernet igen straks efter brug.
+
+Naeste:
+
+- Log ind som admin-kontoen og test hele godkend/afvis-flowet for lokationer og verification requests paa fysisk telefon.
+
+## 2026-08-25 - Verification requests, brugerposition og security rules-test
+
+Implementeret:
+
+- `VerificationRequest` faar nu et `userId`-felt, og `VerificationRepository` skriver rigtige dokumenter til `verificationRequests` i Firestore i stedet for kun at bygge et lokalt objekt.
+- Scan-fanens lokationsvaelger bruger nu ogsaa rigtige verificerede Firestore-lokationer i stedet for `sampleLocations`.
+- Admin-fanen har nu en "Verification requests"-sektion, der viser ventende scan-evidens live fra Firestore med Approve/Reject. Det skriver direkte til Firestore (ikke via Cloud Function), fordi `firestore.rules` allerede giver admin-rollen lov til at opdatere status der.
+- Tilfojede `geolocator` og kobler brugerens position til kortet: tilladelse spørges foerst naar det interaktive kort slaas til, og `myLocationEnabled`/`myLocationButtonEnabled` afspejler om tilladelsen blev givet. Kortet virker stadig fint uden.
+- Rettede forældet forside-tekst, der stadig sagde at "kort, konti og scanning kommer senere" — det er ikke laengere sandt.
+- Tilfojede et rigtigt security rules-testsetup i `firestore-tests/` med `@firebase/rules-unit-testing`, koert mod den lokale Firestore-emulator: bekraefter at en udlogget bruger ikke kan laese lokationer, at en normal bruger ikke kan oprette en lokation som allerede verificeret, at INGEN klient (heller ikke en admin) kan opdatere eller slette en lokation direkte, at kun ens egen brugerprofil kan oprettes med rolle 'user', og at kun en admin kan godkende en verification request eller laese rapporter. Alle 9 tests bestaar.
+- Opdaterede tests til de nye providers; alle 31 Flutter-tests, `flutter analyze` og et release-build gaar igennem.
+
+Problemer:
+
+- Real-scan mod en fysisk Auracast/BLE-sender er stadig ikke testet.
+- 1.000-lokations skalatest (IFK08) og en opdateret kravspecifikation/acceptancetabel (AC01-10) er bevidst fravalgt for nu — 25 rigtige lokationer daekker allerede AC02's krav om mindst 20.
+
+Naeste:
+
+- Test hele appen paa en fysisk Android 13+ telefon: login, kort, scan mod en rigtig sender, og admin-godkendelse.
+- Overvej IFK08-skalatest og kravspec-opdatering, hvis der er tid tilbage foer 01.09.

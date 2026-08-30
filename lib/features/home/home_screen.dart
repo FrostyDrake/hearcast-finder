@@ -24,10 +24,10 @@ class HomeScreen extends StatelessWidget {
         const SizedBox(height: 24),
         const Card(
           child: ListTile(
-            leading: Icon(Icons.route_outlined),
-            title: Text('Development focus'),
+            leading: Icon(Icons.hearing_outlined),
+            title: Text('Map, scan, and verify'),
             subtitle: Text(
-              'Navigation and first data models are in place. Live maps, accounts, and scanning will come later.',
+              'Browse verified locations, scan for a real nearby broadcast on your phone, and submit what you find for admin review.',
             ),
           ),
         ),
@@ -35,7 +35,7 @@ class HomeScreen extends StatelessWidget {
         FilledButton.icon(
           onPressed: onBrowseLocations,
           icon: const Icon(Icons.place_outlined),
-          label: const Text('Browse candidate locations'),
+          label: const Text('Browse verified locations'),
         ),
       ],
     );

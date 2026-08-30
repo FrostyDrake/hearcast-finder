@@ -1,6 +1,6 @@
 # Admin CRUD Setup
 
-Dag 12 kobler kort, lokationsliste og admin/owner-flows til rigtig Firestore-data, og tilfojer Cloud Functions til admin-CRUD.
+Denne omgang (25. august 2026) kobler kort, lokationsliste og admin/owner-flows til rigtig Firestore-data, og tilfojer Cloud Functions til admin-CRUD.
 
 ## Tilfojet Nu
 

@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/utils/validators.dart';
 import '../../models/auracast_location.dart';
+import '../../models/verification_request.dart';
 import '../../providers/firebase_providers.dart';
 import '../../providers/location_providers.dart';
+import '../../providers/verification_providers.dart';
 import '../../services/admin_location_service.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
@@ -22,6 +24,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   LocationCategory _category = LocationCategory.conference;
   var _isCreating = false;
   var _busyLocationId = '';
+  var _busyRequestId = '';
   String? _message;
 
   @override
@@ -105,8 +108,61 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           error: (error, stackTrace) => const SizedBox.shrink(),
         ),
         const SizedBox(height: 24),
+        Text(
+          'Verification requests',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Scan evidence submitted by users, matched to a location.',
+        ),
+        const SizedBox(height: 8),
+        _buildVerificationRequests(),
+        const SizedBox(height: 24),
         _buildCreateLocationForm(context),
       ],
+    );
+  }
+
+  Widget _buildVerificationRequests() {
+    final requestsAsync = ref.watch(pendingVerificationRequestsProvider);
+
+    return requestsAsync.when(
+      data: (requests) {
+        if (requests.isEmpty) {
+          return const Card(
+            child: ListTile(
+              leading: Icon(Icons.check_circle_outline),
+              title: Text('No verification requests pending'),
+            ),
+          );
+        }
+
+        return Column(
+          children: [
+            for (final request in requests)
+              _VerificationRequestReviewTile(
+                request: request,
+                isBusy: _busyRequestId == request.id,
+                onApprove: () => _setRequestStatus(request, VerificationStatus.approved),
+                onReject: () => _setRequestStatus(request, VerificationStatus.rejected),
+              ),
+          ],
+        );
+      },
+      loading: () => const Card(
+        child: ListTile(
+          leading: CircularProgressIndicator(),
+          title: Text('Loading verification requests…'),
+        ),
+      ),
+      error: (error, stackTrace) => Card(
+        child: ListTile(
+          leading: const Icon(Icons.error_outline),
+          title: const Text('Could not load verification requests'),
+          subtitle: Text('$error'),
+        ),
+      ),
     );
   }
 
@@ -227,6 +283,22 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     }
   }
 
+  Future<void> _setRequestStatus(
+    VerificationRequest request,
+    VerificationStatus status,
+  ) async {
+    setState(() => _busyRequestId = request.id);
+    try {
+      await ref.read(verificationRepositoryProvider).setStatus(request.id, status);
+    } on Object catch (error) {
+      _showSnackBar('Could not update request: $error');
+    } finally {
+      if (mounted) {
+        setState(() => _busyRequestId = '');
+      }
+    }
+  }
+
   Future<void> _createLocation() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
       return;
@@ -274,6 +346,65 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _VerificationRequestReviewTile extends StatelessWidget {
+  const _VerificationRequestReviewTile({
+    required this.request,
+    required this.isBusy,
+    required this.onApprove,
+    required this.onReject,
+  });
+
+  final VerificationRequest request;
+  final bool isBusy;
+  final VoidCallback onApprove;
+  final VoidCallback onReject;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(0, 0, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.bluetooth_outlined),
+              title: Text(request.locationName),
+              subtitle: Text(
+                '${request.broadcastName}\nSubmitted by ${request.userId}',
+              ),
+              isThreeLine: true,
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Wrap(
+                spacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: isBusy ? null : onReject,
+                    icon: const Icon(Icons.close),
+                    label: const Text('Reject'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: isBusy ? null : onApprove,
+                    icon: isBusy
+                        ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check),
+                    label: const Text('Approve'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

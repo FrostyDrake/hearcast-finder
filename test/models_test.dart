@@ -92,11 +92,13 @@ void main() {
         latitude: 55.6761,
         longitude: 12.5683,
       ),
+      userId: 'user-1',
       createdAt: DateTime.utc(2026, 8, 22),
     );
 
     expect(request.status, VerificationStatus.pending);
     expect(request.toMap()['locationName'], 'Main Hall');
+    expect(request.toMap()['userId'], 'user-1');
   });
 
   test('location feedback serializes local favorites reviews and reports', () {

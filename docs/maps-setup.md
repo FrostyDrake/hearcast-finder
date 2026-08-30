@@ -1,6 +1,6 @@
 # Google Maps Setup
 
-Dag 7 tilfojer kun fundamentet for Google Maps. Appen har nu en map preview, men rigtig Android-visning kraever stadig API key setup.
+Denne omgang (18. august 2026) tilfojer kun fundamentet for Google Maps. Appen har nu en map preview, men rigtig Android-visning kraever stadig API key setup.
 
 ## Tilfojet Nu
 

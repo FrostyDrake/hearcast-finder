@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../models/auracast_location.dart';
@@ -15,6 +16,8 @@ class MapScreen extends ConsumerStatefulWidget {
 
 class _MapScreenState extends ConsumerState<MapScreen> {
   var _showInteractiveMap = false;
+  var _hasLocationPermission = false;
+  String? _locationMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -37,9 +40,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             title: const Text('Show interactive Google Map'),
             subtitle: const Text('Requires a valid Maps SDK Android key later.'),
             value: _showInteractiveMap,
-            onChanged: (value) => setState(() => _showInteractiveMap = value),
+            onChanged: _onToggleInteractiveMap,
           ),
         ),
+        if (_locationMessage != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            _locationMessage!,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ],
         const SizedBox(height: 12),
         locationsAsync.when(
           data: (locations) {
@@ -48,7 +58,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             return Column(
               children: [
                 if (_showInteractiveMap)
-                  _InteractiveMap(locations: locations, markers: markers)
+                  _InteractiveMap(
+                    locations: locations,
+                    markers: markers,
+                    myLocationEnabled: _hasLocationPermission,
+                  )
                 else
                   _StaticMapSummary(markers: markers),
                 const SizedBox(height: 16),
@@ -77,13 +91,63 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ],
     );
   }
+
+  Future<void> _onToggleInteractiveMap(bool value) async {
+    setState(() => _showInteractiveMap = value);
+    if (value && !_hasLocationPermission) {
+      await _requestLocationPermission();
+    }
+  }
+
+  /// Only asked for once the user actually opens the interactive map, never
+  /// on app startup — the map (and the rest of the app) works fine without it.
+  Future<void> _requestLocationPermission() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          setState(() {
+            _locationMessage =
+                'Turn on device location to see your position on the map.';
+          });
+        }
+        return;
+      }
+
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      final granted = permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse;
+
+      if (mounted) {
+        setState(() {
+          _hasLocationPermission = granted;
+          _locationMessage = granted
+              ? null
+              : 'Location permission denied — the map still works without it.';
+        });
+      }
+    } on Object catch (error) {
+      if (mounted) {
+        setState(() => _locationMessage = 'Could not check location: $error');
+      }
+    }
+  }
 }
 
 class _InteractiveMap extends StatelessWidget {
-  const _InteractiveMap({required this.locations, required this.markers});
+  const _InteractiveMap({
+    required this.locations,
+    required this.markers,
+    required this.myLocationEnabled,
+  });
 
   final List<AuracastLocation> locations;
   final Set<Marker> markers;
+  final bool myLocationEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +158,8 @@ class _InteractiveMap extends StatelessWidget {
         child: GoogleMap(
           initialCameraPosition: MapService.cameraForLocations(locations),
           markers: markers,
-          myLocationButtonEnabled: false,
+          myLocationEnabled: myLocationEnabled,
+          myLocationButtonEnabled: myLocationEnabled,
           zoomControlsEnabled: false,
         ),
       ),

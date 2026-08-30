@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../repositories/location_repository.dart';
 import '../repositories/user_repository.dart';
+import '../repositories/verification_repository.dart';
 import '../services/admin_location_service.dart';
 import '../services/auth_service.dart';
 
@@ -34,4 +35,8 @@ final locationRepositoryProvider = Provider<LocationRepository>((ref) {
 
 final adminLocationServiceProvider = Provider<AdminLocationService>((ref) {
   return AdminLocationService(ref.watch(firebaseFunctionsProvider));
+});
+
+final verificationRepositoryProvider = Provider<VerificationRepository>((ref) {
+  return VerificationRepository(ref.watch(firestoreProvider));
 });
