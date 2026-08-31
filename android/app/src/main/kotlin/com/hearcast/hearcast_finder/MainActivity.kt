@@ -11,6 +11,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.ParcelUuid
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -142,22 +143,31 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun recordScanResult(result: ScanResult) {
-        val recordBytes = result.scanRecord?.bytes ?: ByteArray(0)
+        val scanRecord = result.scanRecord ?: return
+        if (!isAuracastBroadcast(scanRecord)) {
+            // Not every nearby BLE device is an Auracast source - phones, earbuds,
+            // watches, and beacons advertise constantly. Only surface adverts that
+            // actually announce an LE Audio broadcast.
+            return
+        }
+
+        val recordBytes = scanRecord.bytes ?: ByteArray(0)
         val address = try {
             result.device.address ?: ""
         } catch (error: SecurityException) {
             ""
         }
-        val serviceUuids = result.scanRecord?.serviceUuids
+        val serviceUuids = scanRecord.serviceUuids
             ?.map { it.uuid.toString() }
             ?: emptyList()
-        val deviceName = result.scanRecord?.deviceName ?: safeDeviceName(result)
-        val fallbackName = if (serviceUuids.isEmpty()) "BLE audio candidate" else "Nearby BLE signal"
+        val deviceName = scanRecord.deviceName ?: safeDeviceName(result)
+        val broadcastName = extractBroadcastName(recordBytes)
+        val displayName = broadcastName ?: deviceName ?: "Auracast broadcast"
         val key = address.ifBlank { recordBytes.toHexString() }.ifBlank { result.timestampNanos.toString() }
 
         scanResults[key] = mapOf(
             "id" to key,
-            "broadcastName" to (deviceName ?: fallbackName),
+            "broadcastName" to displayName,
             "deviceName" to deviceName,
             "rssi" to result.rssi,
             "rawAdvertisementHex" to recordBytes.toHexString(),
@@ -165,6 +175,48 @@ class MainActivity : FlutterActivity() {
             "serviceUuids" to serviceUuids,
             "detectedAt" to System.currentTimeMillis(),
         )
+    }
+
+    /**
+     * True when the advertisement announces an LE Audio broadcast (Auracast),
+     * identified by the Bluetooth SIG assigned service UUIDs for the Basic
+     * Audio, Broadcast Audio, and Public Broadcast Announcement services.
+     * These are checked both in the advertised service UUID list and in
+     * service data, since real broadcast sources commonly use the latter.
+     */
+    private fun isAuracastBroadcast(scanRecord: android.bluetooth.le.ScanRecord): Boolean {
+        val advertisedUuids = scanRecord.serviceUuids?.map { it.uuid } ?: emptyList()
+        if (AURACAST_SERVICE_UUIDS.any { it.uuid in advertisedUuids }) {
+            return true
+        }
+
+        val serviceData = scanRecord.serviceData ?: emptyMap()
+        return AURACAST_SERVICE_UUIDS.any { serviceData.containsKey(it) }
+    }
+
+    /**
+     * Parses the raw advertisement for a Broadcast_Name AD structure (AD type
+     * 0x30), the human-readable name a broadcast source sets for itself -
+     * generally more useful than the device's own Bluetooth name, if any.
+     */
+    private fun extractBroadcastName(bytes: ByteArray): String? {
+        var index = 0
+        while (index < bytes.size) {
+            val length = bytes[index].toInt() and 0xFF
+            if (length == 0 || index + length >= bytes.size) {
+                break
+            }
+            val type = bytes[index + 1].toInt() and 0xFF
+            if (type == BROADCAST_NAME_AD_TYPE) {
+                val nameBytes = bytes.copyOfRange(index + 2, index + 1 + length)
+                val name = String(nameBytes, Charsets.UTF_8).trim()
+                if (name.isNotEmpty()) {
+                    return name
+                }
+            }
+            index += length + 1
+        }
+        return null
     }
 
     private fun finishActiveScan() {
@@ -255,5 +307,21 @@ class MainActivity : FlutterActivity() {
         private const val SCANNER_CHANNEL = "hearcast/auracast_scanner"
         private const val REQUEST_SCAN_PERMISSIONS = 4107
         private const val SCAN_DURATION_MS = 8_000L
+        private const val BROADCAST_NAME_AD_TYPE = 0x30
+
+        // Bluetooth SIG assigned 16-bit service UUIDs for LE Audio broadcast
+        // announcements - what actually identifies a device as an Auracast
+        // source, as opposed to any other nearby BLE device.
+        private val BASIC_AUDIO_ANNOUNCEMENT_UUID: ParcelUuid =
+            ParcelUuid.fromString("00001851-0000-1000-8000-00805F9B34FB")
+        private val BROADCAST_AUDIO_ANNOUNCEMENT_UUID: ParcelUuid =
+            ParcelUuid.fromString("00001852-0000-1000-8000-00805F9B34FB")
+        private val PUBLIC_BROADCAST_ANNOUNCEMENT_UUID: ParcelUuid =
+            ParcelUuid.fromString("00001856-0000-1000-8000-00805F9B34FB")
+        private val AURACAST_SERVICE_UUIDS = listOf(
+            BASIC_AUDIO_ANNOUNCEMENT_UUID,
+            BROADCAST_AUDIO_ANNOUNCEMENT_UUID,
+            PUBLIC_BROADCAST_ANNOUNCEMENT_UUID,
+        )
     }
 }

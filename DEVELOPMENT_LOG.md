@@ -276,3 +276,23 @@ Naeste:
 
 - Test hele appen paa en fysisk Android 13+ telefon: login, kort, scan mod en rigtig sender, og admin-godkendelse.
 - Overvej IFK08-skalatest og kravspec-opdatering, hvis der er tid tilbage foer 01.09.
+
+## 2026-08-31 - Auracast-filtrering og kort-UI
+
+Implementeret:
+
+- Native scanning (`MainActivity.kt`) filtrerer nu resultater efter Bluetooth SIG's officielle service-UUID'er for LE Audio broadcast-annonceringer (Basic Audio, Broadcast Audio og Public Broadcast Announcement), saa almindelige BLE-enheder i naerheden ikke laengere vises som scanresultater.
+- Scanneren parser advertisement-bytes for `Broadcast_Name` (AD type 0x30) og bruger det som visningsnavn, hvis det findes, i stedet for kun enhedens Bluetooth-navn.
+- Kort-fanen er skrevet helt om: `GoogleMap` fylder nu hele skaermen og er altid aktiv. Det gamle design havde kortet i en fast-hoejde boks nede i en scrollbar liste, hvilket gav gestus-konflikt mellem listens scroll og kortets pan/zoom — det var aarsagen til at kortet var svaert at bruge.
+- Markoerers infovindue kan nu trykkes for at aabne lokationsdetaljer direkte.
+- Opdaterede `MapService.markersForLocations` til at tage en valgfri `onInfoWindowTap`-callback (bagudkompatibel — eksisterende kald uden callback virker stadig).
+- Opdaterede tests til den nye kort-UI; alle 31 Flutter-tests og `flutter analyze` gaar igennem.
+
+Problemer:
+
+- UUID-filtreringen for Auracast er baseret paa Bluetooth SIG's dokumenterede assigned numbers, men er endnu ikke bekraeftet mod en rigtig fysisk sender.
+
+Naeste:
+
+- Test scanningen mod en rigtig Auracast/BLE-sender og bekraeft at filtreringen rent faktisk fanger den.
+- Test det nye kort-UI paa telefonen: pan/zoom, markoer-tryk, infovindue-tryk til detaljer.

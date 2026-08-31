@@ -10,7 +10,10 @@ class MapService {
     zoom: 11,
   );
 
-  static Set<Marker> markersForLocations(List<AuracastLocation> locations) {
+  static Set<Marker> markersForLocations(
+    List<AuracastLocation> locations, {
+    void Function(AuracastLocation location)? onInfoWindowTap,
+  }) {
     return locations
         .where(hasUsableCoordinates)
         .map(
@@ -19,7 +22,8 @@ class MapService {
             position: LatLng(location.latitude, location.longitude),
             infoWindow: InfoWindow(
               title: location.name,
-              snippet: '${location.category.label} in ${location.city}',
+              snippet: '${location.category.label} in ${location.city} · tap for details',
+              onTap: onInfoWindowTap == null ? null : () => onInfoWindowTap(location),
             ),
           ),
         )

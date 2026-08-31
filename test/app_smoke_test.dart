@@ -2,6 +2,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:hearcast_finder/app.dart';
 import 'package:hearcast_finder/features/locations/sample_locations.dart';
 import 'package:hearcast_finder/models/app_user.dart';
@@ -162,9 +163,8 @@ void main() {
     await tester.tap(find.text('Map'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Map preview'), findsOneWidget);
-    expect(find.text('3 map markers prepared'), findsOneWidget);
-    expect(find.text('City Conference Hall'), findsOneWidget);
+    expect(find.byType(GoogleMap), findsOneWidget);
+    expect(find.textContaining('verified location'), findsOneWidget);
   });
 
   testWidgets('can open the scan tab', (tester) async {

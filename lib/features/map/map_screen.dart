@@ -6,6 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../models/auracast_location.dart';
 import '../../providers/location_providers.dart';
 import '../../services/map_service.dart';
+import '../locations/location_details_screen.dart';
 
 class MapScreen extends ConsumerStatefulWidget {
   const MapScreen({super.key});
@@ -15,92 +16,87 @@ class MapScreen extends ConsumerStatefulWidget {
 }
 
 class _MapScreenState extends ConsumerState<MapScreen> {
-  var _showInteractiveMap = false;
+  GoogleMapController? _mapController;
   var _hasLocationPermission = false;
   String? _locationMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    // The map is the main screen here, so it's reasonable to ask for
+    // location the moment this tab opens - never at app startup, and the
+    // map stays fully usable if the answer is no.
+    _requestLocationPermission();
+  }
+
+  @override
+  void dispose() {
+    _mapController?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final locationsAsync = ref.watch(verifiedLocationsProvider);
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Text(
-          'Map preview',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Google Maps dependency is added. The interactive map is kept optional until Android API key setup is finished.',
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: SwitchListTile(
-            title: const Text('Show interactive Google Map'),
-            subtitle: const Text('Requires a valid Maps SDK Android key later.'),
-            value: _showInteractiveMap,
-            onChanged: _onToggleInteractiveMap,
-          ),
-        ),
-        if (_locationMessage != null) ...[
-          const SizedBox(height: 8),
-          Text(
-            _locationMessage!,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-        const SizedBox(height: 12),
-        locationsAsync.when(
-          data: (locations) {
-            final markers = MapService.markersForLocations(locations);
+    return locationsAsync.when(
+      data: (locations) {
+        final markers = MapService.markersForLocations(
+          locations,
+          onInfoWindowTap: (location) => _openDetails(context, location),
+        );
 
-            return Column(
-              children: [
-                if (_showInteractiveMap)
-                  _InteractiveMap(
-                    locations: locations,
-                    markers: markers,
-                    myLocationEnabled: _hasLocationPermission,
-                  )
-                else
-                  _StaticMapSummary(markers: markers),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Mapped locations',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GoogleMap(
+                initialCameraPosition: MapService.cameraForLocations(locations),
+                markers: markers,
+                myLocationEnabled: _hasLocationPermission,
+                myLocationButtonEnabled: _hasLocationPermission,
+                zoomControlsEnabled: false,
+                onMapCreated: (controller) => _mapController = controller,
+              ),
+            ),
+            Positioned(
+              top: 12,
+              left: 12,
+              right: 12,
+              child: _CountBadge(count: locations.length),
+            ),
+            if (_locationMessage != null)
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 12,
+                child: _MessageBanner(
+                  message: _locationMessage!,
+                  onDismiss: () => setState(() => _locationMessage = null),
                 ),
-                const SizedBox(height: 8),
-                if (locations.isEmpty)
-                  const _EmptyMapState()
-                else
-                  for (final location in locations)
-                    _MapLocationTile(location: location),
-              ],
-            );
-          },
-          loading: () => const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (error, stackTrace) => _MapErrorState(error: error),
-        ),
-      ],
+              ),
+            if (locations.isEmpty)
+              const Positioned(
+                left: 24,
+                right: 24,
+                bottom: 24,
+                child: _EmptyMapBanner(),
+              ),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stackTrace) => _MapErrorState(error: error),
     );
   }
 
-  Future<void> _onToggleInteractiveMap(bool value) async {
-    setState(() => _showInteractiveMap = value);
-    if (value && !_hasLocationPermission) {
-      await _requestLocationPermission();
-    }
+  void _openDetails(BuildContext context, AuracastLocation location) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => LocationDetailsScreen(location: location),
+      ),
+    );
   }
 
-  /// Only asked for once the user actually opens the interactive map, never
-  /// on app startup — the map (and the rest of the app) works fine without it.
   Future<void> _requestLocationPermission() async {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -138,57 +134,57 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 }
 
-class _InteractiveMap extends StatelessWidget {
-  const _InteractiveMap({
-    required this.locations,
-    required this.markers,
-    required this.myLocationEnabled,
-  });
+class _CountBadge extends StatelessWidget {
+  const _CountBadge({required this.count});
 
-  final List<AuracastLocation> locations;
-  final Set<Marker> markers;
-  final bool myLocationEnabled;
+  final int count;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 280,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: GoogleMap(
-          initialCameraPosition: MapService.cameraForLocations(locations),
-          markers: markers,
-          myLocationEnabled: myLocationEnabled,
-          myLocationButtonEnabled: myLocationEnabled,
-          zoomControlsEnabled: false,
+    return Align(
+      alignment: Alignment.topLeft,
+      child: Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.verified_outlined, size: 18),
+              const SizedBox(width: 6),
+              Text(
+                '$count verified location${count == 1 ? '' : 's'}',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _StaticMapSummary extends StatelessWidget {
-  const _StaticMapSummary({required this.markers});
+class _MessageBanner extends StatelessWidget {
+  const _MessageBanner({required this.message, required this.onDismiss});
 
-  final Set<Marker> markers;
+  final String message;
+  final VoidCallback onDismiss;
 
   @override
   Widget build(BuildContext context) {
     return Card(
+      elevation: 3,
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+        child: Row(
           children: [
-            const Icon(Icons.map_outlined, size: 40),
-            const SizedBox(height: 12),
-            Text(
-              '${markers.length} map markers prepared',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'This static preview keeps the app usable before the Android Maps API key is configured.',
+            Expanded(child: Text(message)),
+            IconButton(
+              onPressed: onDismiss,
+              icon: const Icon(Icons.close),
+              tooltip: 'Dismiss',
+              visualDensity: VisualDensity.compact,
             ),
           ],
         ),
@@ -197,36 +193,27 @@ class _StaticMapSummary extends StatelessWidget {
   }
 }
 
-class _MapLocationTile extends StatelessWidget {
-  const _MapLocationTile({required this.location});
-
-  final AuracastLocation location;
+class _EmptyMapBanner extends StatelessWidget {
+  const _EmptyMapBanner();
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: ListTile(
-        leading: const Icon(Icons.location_on_outlined),
-        title: Text(location.name),
-        subtitle: Text(
-          '${location.city} • ${location.latitude.toStringAsFixed(4)}, '
-          '${location.longitude.toStringAsFixed(4)}',
+      elevation: 3,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(Icons.location_off_outlined),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'No verified locations yet. Approved locations will appear here once an admin verifies them.',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+          ],
         ),
-      ),
-    );
-  }
-}
-
-class _EmptyMapState extends StatelessWidget {
-  const _EmptyMapState();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Card(
-      child: ListTile(
-        leading: Icon(Icons.location_off_outlined),
-        title: Text('No verified locations yet'),
-        subtitle: Text('Approved locations will appear here once an admin verifies them.'),
       ),
     );
   }
@@ -239,11 +226,24 @@ class _MapErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.error_outline),
-        title: const Text('Could not load the map'),
-        subtitle: Text('$error'),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, size: 32),
+                const SizedBox(height: 8),
+                const Text('Could not load the map'),
+                const SizedBox(height: 4),
+                Text('$error', textAlign: TextAlign.center),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
