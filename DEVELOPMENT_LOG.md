@@ -296,3 +296,40 @@ Naeste:
 
 - Test scanningen mod en rigtig Auracast/BLE-sender og bekraeft at filtreringen rent faktisk fanger den.
 - Test det nye kort-UI paa telefonen: pan/zoom, markoer-tryk, infovindue-tryk til detaljer.
+
+## 2026-08-31 - Broadcast-profiler (FK11)
+
+Implementeret:
+
+- `Broadcast`-modellen har nu rigtig Firestore-serialisering (`toMap`/`fromMap`).
+- Ny `BroadcastRepository` og `locations/{id}/broadcasts/{id}`-subcollection i Firestore, med egen rule: alle signeret-ind kan laese, kun admin kan oprette/opdatere/slette (direkte rules-gated, ligesom verification requests — ingen ny Cloud Function noedvendig).
+- Lokationsdetaljer viser nu et "Broadcast profiles"-kort: alle ser kendte broadcast-profiler for stedet, en admin kan tilfoje (navn, sprog, adgangstype, valgfri beskrivelse) og slette.
+- Tilfojede tests for den nye model, repository (via `fake_cloud_firestore`) og UI-flowet, samt 2 nye rules-tests (kun admin kan skrive, alle signeret-ind kan laese). 38 Flutter-tests og 11 rules-tests, alle bestaar.
+- Malte testcoverage: 68,5% (950/1386 linjer) — lige under kravspecens 70%-maal, primaert fordi UI-widgets og et par tynde service-wrappers ikke er daekket.
+- Verificerede hele det nye FK11-flow manuelt paa telefonen mod den rigtige Firebase-backend (ikke kun emulator): tilfojede "Main Hall Audio" til Utzon Center Auditorium, den dukkede op med det samme.
+- Verificerede ogsaa hele kort-redesignet og navigations-flowet (markoer -> infovindue -> detaljer) direkte paa telefonen via skaermbilleder og adb-styring: fuldskaerms kort, "min position"-knap, 25 lokationer, og Admin-fanens tre sektioner renderer alle korrekt mod rigtig data.
+
+Naeste:
+
+- Ingen — se naeste log for den afsluttende telefontest.
+
+## 2026-09-01 - Rigtig scan-test mod fysisk sender (AC05/AC06)
+
+Implementeret:
+
+- Ingenting kodemaessigt i dag — dette er den afsluttende manuelle valideringsrunde foer deadline.
+
+Testet og bekraeftet paa telefonen:
+
+- En rigtig scanning fandt faktisk et Auracast/BLE-broadcast fra en fysisk sender, filtreret korrekt (ikke almindelige BLE-enheder).
+- Scan-evidence blev indsendt og matchet til Utzon Center Auditorium.
+- Verification requesten dukkede op i Admin-fanen og blev godkendt af admin-kontoen.
+- Log ud/log ind og rollefordeling mellem almindelig bruger og admin virker.
+- Andre brugere har afprøvet appen uden hjælp, og det virkede fint (uformel IFK03-test).
+
+Dermed er AC01, AC02, AC04 (delvist), AC05, AC06, AC07 og AC08 nu alle reelt afprøvet paa en fysisk Android-enhed mod den rigtige backend, ikke kun i automatiserede tests.
+
+Problemer:
+
+- IFK02 (performance-maaling) og IFK08 (1.000-lokations skalatest) er stadig ikke udfoert, bevidst fravalgt af tidshensyn.
+- Kravspecifikationens dokumenthistorik og AC01-10-tabel er ikke opdateret i selve kravspec-dokumentet.

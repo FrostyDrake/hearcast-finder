@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../repositories/broadcast_repository.dart';
 import '../repositories/location_repository.dart';
 import '../repositories/user_repository.dart';
 import '../repositories/verification_repository.dart';
@@ -39,4 +40,8 @@ final adminLocationServiceProvider = Provider<AdminLocationService>((ref) {
 
 final verificationRepositoryProvider = Provider<VerificationRepository>((ref) {
   return VerificationRepository(ref.watch(firestoreProvider));
+});
+
+final broadcastRepositoryProvider = Provider<BroadcastRepository>((ref) {
+  return BroadcastRepository(ref.watch(firestoreProvider));
 });

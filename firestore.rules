@@ -31,6 +31,15 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.status in ['candidate', 'unknown'];
       allow update, delete: if false;
+
+      match /broadcasts/{broadcastId} {
+        allow read: if signedIn();
+        allow create, update: if hasUserRole('admin')
+          && request.resource.data.locationId == locationId
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0;
+        allow delete: if hasUserRole('admin');
+      }
     }
 
     match /verificationRequests/{requestId} {

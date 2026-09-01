@@ -7,7 +7,9 @@ import 'package:hearcast_finder/app.dart';
 import 'package:hearcast_finder/features/locations/sample_locations.dart';
 import 'package:hearcast_finder/models/app_user.dart';
 import 'package:hearcast_finder/models/auracast_location.dart';
+import 'package:hearcast_finder/models/broadcast.dart';
 import 'package:hearcast_finder/models/verification_request.dart';
+import 'package:hearcast_finder/providers/broadcast_providers.dart';
 import 'package:hearcast_finder/providers/firebase_providers.dart';
 import 'package:hearcast_finder/providers/location_providers.dart';
 import 'package:hearcast_finder/providers/session_providers.dart';
@@ -89,7 +91,11 @@ void main() {
   });
 
   testWidgets('can search and open location details', (tester) async {
-    await tester.pumpWidget(_signedInApp());
+    await tester.pumpWidget(_signedInApp(
+      extraOverrides: [
+        broadcastsForLocationProvider.overrideWith((ref, locationId) => Stream.value(const [])),
+      ],
+    ));
     await tester.pump();
 
     await tester.tap(find.text('Locations'));
@@ -113,7 +119,11 @@ void main() {
   testWidgets('can favorite review and report a location', (tester) async {
     await tester.binding.setSurfaceSize(const Size(900, 1400));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(_signedInApp());
+    await tester.pumpWidget(_signedInApp(
+      extraOverrides: [
+        broadcastsForLocationProvider.overrideWith((ref, locationId) => Stream.value(const [])),
+      ],
+    ));
     await tester.pump();
 
     await tester.tap(find.text('Locations'));
@@ -291,5 +301,59 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.byType(SnackBar), findsOneWidget);
+  });
+
+  testWidgets('admin can add a broadcast profile to a location', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 1400));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final fakeFirestore = FakeFirebaseFirestore();
+    const admin = AppUser(
+      id: 'admin-uid',
+      name: 'Admin',
+      email: 'admin@example.com',
+      role: AppUserRole.admin,
+    );
+
+    await tester.pumpWidget(_signedInApp(
+      user: admin,
+      extraOverrides: [firestoreProvider.overrideWithValue(fakeFirestore)],
+    ));
+    await tester.pump();
+
+    await tester.tap(find.text('Locations'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('City Conference Hall'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('No known broadcast profiles for this location yet.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byIcon(Icons.add_circle_outline));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Name'),
+      'Main Hall Audio',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Language'),
+      'English',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Add'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Main Hall Audio'), findsOneWidget);
+
+    final stored = await fakeFirestore
+        .collection('locations')
+        .doc('city-conference-hall')
+        .collection('broadcasts')
+        .get();
+    expect(stored.docs, hasLength(1));
+    expect(stored.docs.first.data()['name'], 'Main Hall Audio');
+    expect(stored.docs.first.data()['accessType'], BroadcastAccessType.public.name);
   });
 }

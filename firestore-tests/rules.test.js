@@ -172,6 +172,46 @@ test("only an admin can read reports", async () => {
   await assertSucceeds(getDocs(collection(adminDb, "reports")));
 });
 
+test("only an admin can add a broadcast profile to a location", async () => {
+  await seedLocation("loc-1", {name: "Test Hall", status: "verified"});
+  await seedAdmin("admin-1");
+
+  const userDb = testEnv.authenticatedContext("user-1").firestore();
+  const adminDb = testEnv.authenticatedContext("admin-1").firestore();
+
+  await assertFails(
+    addDoc(collection(userDb, "locations", "loc-1", "broadcasts"), {
+      locationId: "loc-1",
+      name: "Main Hall Audio",
+    }),
+  );
+  await assertSucceeds(
+    addDoc(collection(adminDb, "locations", "loc-1", "broadcasts"), {
+      locationId: "loc-1",
+      name: "Main Hall Audio",
+    }),
+  );
+});
+
+test("any signed-in user can read broadcast profiles, but not delete them", async () => {
+  await seedLocation("loc-1", {name: "Test Hall", status: "verified"});
+  await seedAdmin("admin-1");
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "locations", "loc-1", "broadcasts", "b-1"), {
+      locationId: "loc-1",
+      name: "Main Hall Audio",
+    });
+  });
+
+  const userDb = testEnv.authenticatedContext("user-1").firestore();
+  const adminDb = testEnv.authenticatedContext("admin-1").firestore();
+
+  await assertSucceeds(getDocs(collection(userDb, "locations", "loc-1", "broadcasts")));
+  await assertFails(deleteDoc(doc(userDb, "locations", "loc-1", "broadcasts", "b-1")));
+  await assertSucceeds(deleteDoc(doc(adminDb, "locations", "loc-1", "broadcasts", "b-1")));
+});
+
 test("sanity: rules file loaded", () => {
   assert.ok(testEnv, "test environment should be initialized");
 });

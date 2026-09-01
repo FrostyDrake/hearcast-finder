@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hearcast_finder/models/app_user.dart';
 import 'package:hearcast_finder/models/auracast_location.dart';
+import 'package:hearcast_finder/models/broadcast.dart';
 import 'package:hearcast_finder/models/location_feedback.dart';
 import 'package:hearcast_finder/models/scan_result.dart';
 import 'package:hearcast_finder/models/verification_request.dart';
@@ -122,5 +123,26 @@ void main() {
     expect(favorite.toMap()['locationId'], 'loc-1');
     expect(review.toMap()['rating'], 5);
     expect(report.toMap()['reason'], 'incorrectInfo');
+  });
+
+  test('broadcast profiles round-trip through Firestore maps', () {
+    const broadcast = Broadcast(
+      id: 'broadcast-1',
+      locationId: 'loc-1',
+      name: 'Main Hall Audio',
+      language: 'English',
+      accessType: BroadcastAccessType.public,
+      description: 'Live commentary during events.',
+    );
+
+    final parsed = Broadcast.fromMap(
+      broadcast.id,
+      broadcast.locationId,
+      broadcast.toMap(),
+    );
+
+    expect(parsed.name, 'Main Hall Audio');
+    expect(parsed.accessType, BroadcastAccessType.public);
+    expect(parsed.description, 'Live commentary during events.');
   });
 }
