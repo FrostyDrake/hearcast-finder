@@ -22,19 +22,8 @@ Repositoryet starter den 12. august 2026 og bliver udviklet trinvist. Den nuvaer
 - Lokal scan evidence submission til pending verification requests
 - Foerste owner dashboard til lokale location drafts
 - Lokal admin review af pending verification requests
-- Lokale favoritter, anmeldelser og rapporter paa location details
-
-## Ikke Implementeret Endnu
-
+- Lokale favoritter, anmeldelser og rapporter via location details
 - Rigtig Firebase login-forbindelse
 - Rigtig Firestore lagring i appen
 - Google Maps Android API key og fuld native map-konfiguration
-- Verificeret fysisk Android Bluetooth scan paa telefon
-- Rigtig admin backend, moderation audit log og production security review
-
-## Udvikling
-
-```powershell
-C:\dev\flutter\bin\flutter.bat pub get
-C:\dev\flutter\bin\flutter.bat test
-```
+- Verificeret fysisk Android Bluetooth scan via telefon
