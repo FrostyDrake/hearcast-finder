@@ -1,6 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/theme/hc_palette.dart';
+import '../../core/utils/write_timeout.dart';
+import '../../core/widgets/hc_category.dart';
+import '../../core/widgets/hc_layout.dart';
+import '../../core/widgets/hc_states.dart';
+import '../../core/widgets/hc_status.dart';
 import '../../models/app_user.dart';
 import '../../models/auracast_location.dart';
 import '../../models/broadcast.dart';
@@ -19,7 +27,8 @@ class LocationDetailsScreen extends ConsumerStatefulWidget {
   final AuracastLocation location;
 
   @override
-  ConsumerState<LocationDetailsScreen> createState() => _LocationDetailsScreenState();
+  ConsumerState<LocationDetailsScreen> createState() =>
+      _LocationDetailsScreenState();
 }
 
 class _LocationDetailsScreenState extends ConsumerState<LocationDetailsScreen> {
@@ -42,81 +51,36 @@ class _LocationDetailsScreenState extends ConsumerState<LocationDetailsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Location details')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: HcScreen(
         children: [
-          Text(
-            location.name,
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            [location.address, location.city].join(', '),
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              Chip(
-                avatar: const Icon(Icons.category_outlined),
-                label: Text(location.category.label),
-              ),
-              Chip(
-                avatar: const Icon(Icons.info_outline),
-                label: Text(location.status.label),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                location.notes.isEmpty
-                    ? 'No notes have been added for this candidate yet.'
-                    : location.notes,
-              ),
+          _LocationHeaderCard(location: location),
+          const SizedBox(height: HcSpace.lg),
+          _NotesCard(notes: location.notes),
+          const SizedBox(height: HcSpace.lg),
+          HcCard(
+            child: HcDetailRow(
+              icon: Icons.explore_outlined,
+              label: 'Approximate coordinates',
+              value: '${location.latitude.toStringAsFixed(4)}, '
+                  '${location.longitude.toStringAsFixed(4)}',
             ),
           ),
-          const SizedBox(height: 16),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.location_on_outlined),
-              title: const Text('Approximate coordinates'),
-              subtitle: Text(
-                '${location.latitude.toStringAsFixed(4)}, '
-                '${location.longitude.toStringAsFixed(4)}',
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: HcSpace.lg),
           _BroadcastProfilesCard(locationId: location.id),
-          const SizedBox(height: 16),
+          const SizedBox(height: HcSpace.lg),
           _LocationActionsCard(
             isFavorite: _favorite != null,
             hasReport: _reports.isNotEmpty,
             onFavoritePressed: _toggleFavorite,
             onReportPressed: _reportIssue,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: HcSpace.lg),
           _ReviewCard(
             controller: _reviewController,
             rating: _rating,
             reviews: _reviews,
-            onRatingChanged: (rating) {
-              if (rating != null) {
-                setState(() => _rating = rating);
-              }
-            },
+            onRatingChanged: (rating) => setState(() => _rating = rating),
             onSubmit: _addReview,
-          ),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_back),
-            label: const Text('Back to list'),
           ),
         ],
       ),
@@ -166,6 +130,133 @@ class _LocationDetailsScreenState extends ConsumerState<LocationDetailsScreen> {
   }
 }
 
+/// Name, address and state, in that order: the most important facts first,
+/// with anything the user can *do* pushed below the fold of the card.
+class _LocationHeaderCard extends StatelessWidget {
+  const _LocationHeaderCard({required this.location});
+
+  final AuracastLocation location;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final palette = context.hcPalette;
+    final scaler = MediaQuery.textScalerOf(context);
+
+    return HcCard(
+      padding: const EdgeInsets.all(HcSpace.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              HcCategoryAvatar(category: location.category, large: true),
+              const SizedBox(width: HcSpace.lg),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        location.name,
+                        style: theme.textTheme.headlineSmall,
+                      ),
+                    ),
+                    const SizedBox(height: HcSpace.xs),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ExcludeSemantics(
+                          child: Icon(
+                            Icons.location_on_outlined,
+                            size: scaler.scale(16),
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(width: HcSpace.xs),
+                        Expanded(
+                          child: Text(
+                            [location.address, location.city].join(', '),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: HcSpace.lg),
+          Wrap(
+            spacing: HcSpace.sm,
+            runSpacing: HcSpace.sm,
+            children: [
+              HcStatusBadge(
+                descriptor: HcStatusDescriptor.forLocation(
+                  location.status,
+                  palette,
+                ),
+              ),
+              HcStatusBadge(
+                semanticPrefix: 'Category',
+                descriptor: HcStatusDescriptor(
+                  label: location.category.label,
+                  icon: location.category.icon,
+                  colors: palette.neutral,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NotesCard extends StatelessWidget {
+  const _NotesCard({required this.notes});
+
+  final String notes;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isEmpty = notes.isEmpty;
+
+    return HcCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Notes',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: HcSpace.xs),
+          Text(
+            isEmpty
+                ? 'No notes have been added for this candidate yet.'
+                : notes,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: isEmpty ? scheme.onSurfaceVariant : scheme.onSurface,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _BroadcastProfilesCard extends ConsumerWidget {
   const _BroadcastProfilesCard({required this.locationId});
 
@@ -173,76 +264,72 @@ class _BroadcastProfilesCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final broadcastsAsync = ref.watch(broadcastsForLocationProvider(locationId));
-    final isAdmin =
-        ref.watch(currentAppUserProvider).valueOrNull?.role == AppUserRole.admin;
+    final theme = Theme.of(context);
+    final broadcastsAsync = ref.watch(
+      broadcastsForLocationProvider(locationId),
+    );
+    final isAdmin = ref.watch(currentAppUserProvider).valueOrNull?.role ==
+        AppUserRole.admin;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Broadcast profiles',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-                if (isAdmin)
-                  IconButton(
+    return HcCard(
+      padding: const EdgeInsets.fromLTRB(
+        HcSpace.lg,
+        HcSpace.lg,
+        HcSpace.lg,
+        HcSpace.sm,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          HcSectionHeader(
+            title: 'Broadcast profiles',
+            subtitle: 'Streams this place is known to run.',
+            trailing: isAdmin
+                ? IconButton(
                     onPressed: () => _showAddDialog(context, ref),
                     icon: const Icon(Icons.add_circle_outline),
                     tooltip: 'Add broadcast profile',
-                  ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            broadcastsAsync.when(
-              data: (broadcasts) {
-                if (broadcasts.isEmpty) {
-                  return const Text(
+                  )
+                : null,
+          ),
+          broadcastsAsync.when(
+            data: (broadcasts) {
+              if (broadcasts.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: HcSpace.sm),
+                  child: Text(
                     'No known broadcast profiles for this location yet.',
-                  );
-                }
-                return Column(
-                  children: [
-                    for (final broadcast in broadcasts)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.podcasts_outlined),
-                        title: Text(broadcast.name),
-                        subtitle: Text(
-                          [
-                            if (broadcast.language.isNotEmpty) broadcast.language,
-                            broadcast.accessType.label,
-                            if (broadcast.description.isNotEmpty)
-                              broadcast.description,
-                          ].join(' · '),
-                        ),
-                        trailing: isAdmin
-                            ? IconButton(
-                                onPressed: () =>
-                                    _deleteBroadcast(context, ref, broadcast),
-                                icon: const Icon(Icons.delete_outline),
-                                tooltip: 'Delete',
-                              )
-                            : null,
-                      ),
-                  ],
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 );
-              },
-              loading: () => const Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Center(child: CircularProgressIndicator()),
-              ),
-              error: (error, stackTrace) =>
-                  Text('Could not load broadcast profiles.\n$error'),
+              }
+              return Column(
+                children: [
+                  for (final broadcast in broadcasts)
+                    _BroadcastRow(
+                      broadcast: broadcast,
+                      onDelete: isAdmin
+                          ? () => _deleteBroadcast(context, ref, broadcast)
+                          : null,
+                    ),
+                ],
+              );
+            },
+            loading: () => const Padding(
+              padding: EdgeInsets.only(bottom: HcSpace.lg),
+              child: HcLoadingState(message: 'Loading broadcast profiles…'),
             ),
-          ],
-        ),
+            error: (error, stackTrace) => Padding(
+              padding: const EdgeInsets.only(bottom: HcSpace.sm),
+              child: Text(
+                'Could not load broadcast profiles.\n$error',
+                style: theme.textTheme.bodySmall,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -255,7 +342,8 @@ class _BroadcastProfilesCard extends ConsumerWidget {
     try {
       await ref
           .read(broadcastRepositoryProvider)
-          .deleteBroadcast(locationId, broadcast.id);
+          .deleteBroadcast(locationId, broadcast.id)
+          .withWriteTimeout();
     } on Object catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -287,10 +375,12 @@ class _BroadcastProfilesCard extends ConsumerWidget {
                       decoration: const InputDecoration(labelText: 'Name'),
                       autofocus: true,
                     ),
+                    const SizedBox(height: HcSpace.md),
                     TextField(
                       controller: languageController,
                       decoration: const InputDecoration(labelText: 'Language'),
                     ),
+                    const SizedBox(height: HcSpace.md),
                     DropdownButtonFormField<BroadcastAccessType>(
                       initialValue: accessType,
                       decoration: const InputDecoration(labelText: 'Access'),
@@ -308,6 +398,7 @@ class _BroadcastProfilesCard extends ConsumerWidget {
                         }
                       },
                     ),
+                    const SizedBox(height: HcSpace.md),
                     TextField(
                       controller: descriptionController,
                       decoration: const InputDecoration(
@@ -338,17 +429,22 @@ class _BroadcastProfilesCard extends ConsumerWidget {
     }
 
     final repository = ref.read(broadcastRepositoryProvider);
+    final profile = Broadcast(
+      id: repository.newBroadcastId(locationId),
+      locationId: locationId,
+      name: nameController.text.trim(),
+      language: languageController.text.trim(),
+      accessType: accessType,
+      description: descriptionController.text.trim(),
+    );
     try {
-      await repository.saveBroadcast(
-        Broadcast(
-          id: repository.newBroadcastId(locationId),
-          locationId: locationId,
-          name: nameController.text.trim(),
-          language: languageController.text.trim(),
-          accessType: accessType,
-          description: descriptionController.text.trim(),
-        ),
-      );
+      await repository.saveBroadcast(profile).withWriteTimeout();
+    } on TimeoutException catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error.message ?? hcWriteTimeoutMessage)),
+        );
+      }
     } on Object catch (error) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -356,6 +452,73 @@ class _BroadcastProfilesCard extends ConsumerWidget {
         );
       }
     }
+  }
+}
+
+class _BroadcastRow extends StatelessWidget {
+  const _BroadcastRow({required this.broadcast, this.onDelete});
+
+  final Broadcast broadcast;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final palette = context.hcPalette;
+    final meta = [
+      if (broadcast.language.isNotEmpty) broadcast.language,
+      if (broadcast.description.isNotEmpty) broadcast.description,
+    ].join(' · ');
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: HcSpace.md),
+      child: MergeSemantics(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ExcludeSemantics(
+              child: Icon(
+                Icons.graphic_eq_rounded,
+                size: MediaQuery.textScalerOf(context).scale(20),
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(width: HcSpace.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(broadcast.name, style: theme.textTheme.titleMedium),
+                  if (meta.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      meta,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: HcSpace.sm),
+                  HcStatusBadge(
+                    semanticPrefix: 'Access',
+                    descriptor: HcStatusDescriptor.forAccess(
+                      broadcast.accessType,
+                      palette,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (onDelete != null)
+              IconButton(
+                onPressed: onDelete,
+                icon: const Icon(Icons.delete_outline),
+                tooltip: 'Delete ${broadcast.name}',
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -374,27 +537,38 @@ class _LocationActionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            FilledButton.icon(
-              onPressed: onFavoritePressed,
-              icon: Icon(
-                isFavorite ? Icons.bookmark : Icons.bookmark_border_outlined,
+    final theme = Theme.of(context);
+
+    return HcCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          HcActionBar(
+            children: [
+              FilledButton.icon(
+                onPressed: onFavoritePressed,
+                icon: Icon(
+                  isFavorite
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
+                ),
+                label: Text(isFavorite ? 'Saved favorite' : 'Save favorite'),
               ),
-              label: Text(isFavorite ? 'Saved favorite' : 'Save favorite'),
+              OutlinedButton.icon(
+                onPressed: hasReport ? null : onReportPressed,
+                icon: const Icon(Icons.flag_outlined),
+                label: Text(hasReport ? 'Report queued' : 'Report issue'),
+              ),
+            ],
+          ),
+          const SizedBox(height: HcSpace.md),
+          Text(
+            'Favourites, reviews and reports are kept on this device only.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
             ),
-            OutlinedButton.icon(
-              onPressed: hasReport ? null : onReportPressed,
-              icon: const Icon(Icons.flag_outlined),
-              label: Text(hasReport ? 'Report queued' : 'Report issue'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -412,67 +586,142 @@ class _ReviewCard extends StatelessWidget {
   final TextEditingController controller;
   final int rating;
   final List<LocationReview> reviews;
-  final ValueChanged<int?> onRatingChanged;
+  final ValueChanged<int> onRatingChanged;
   final VoidCallback onSubmit;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return HcCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const HcSectionHeader(title: 'Reviews'),
+          Text(
+            'Rating',
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: HcSpace.xs),
+          _StarPicker(rating: rating, onChanged: onRatingChanged),
+          const SizedBox(height: HcSpace.md),
+          TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Review note',
+              floatingLabelBehavior: FloatingLabelBehavior.always,
+              hintText: 'What was the audio like?',
+            ),
+            maxLines: 3,
+            minLines: 2,
+          ),
+          const SizedBox(height: HcSpace.md),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: onSubmit,
+              icon: const Icon(Icons.rate_review_outlined),
+              label: const Text('Add review'),
+            ),
+          ),
+          const SizedBox(height: HcSpace.lg),
+          if (reviews.isEmpty)
             Text(
-              'Reviews',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<int>(
-              initialValue: rating,
-              decoration: const InputDecoration(
-                labelText: 'Rating',
-                border: OutlineInputBorder(),
+              'No reviews yet',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
               ),
-              items: [
-                for (var value = 1; value <= 5; value++)
-                  DropdownMenuItem(
-                    value: value,
-                    child: Text('$value stars'),
+            )
+          else
+            for (final review in reviews)
+              Padding(
+                padding: const EdgeInsets.only(bottom: HcSpace.md),
+                child: MergeSemantics(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _StarRow(rating: review.rating),
+                      const SizedBox(height: HcSpace.xs),
+                      Text(review.comment, style: theme.textTheme.bodyLarge),
+                    ],
                   ),
-              ],
-              onChanged: onRatingChanged,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'Review note',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: onSubmit,
-                icon: const Icon(Icons.rate_review_outlined),
-                label: const Text('Add review'),
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (reviews.isEmpty)
-              const Text('No reviews yet')
-            else
-              for (final review in reviews)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.star_outline),
-                  title: Text('${review.rating} stars'),
-                  subtitle: Text(review.comment),
                 ),
-          ],
-        ),
+              ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Five tappable stars. Each is a full 48dp target, and the current value is
+/// also announced as text so the rating never depends on counting glyphs.
+class _StarPicker extends StatelessWidget {
+  const _StarPicker({required this.rating, required this.onChanged});
+
+  final int rating;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return Semantics(
+      label: 'Rating: $rating of 5 stars',
+      child: Wrap(
+        children: [
+          for (var value = 1; value <= 5; value++)
+            IconButton(
+              onPressed: () => onChanged(value),
+              tooltip: '$value star${value == 1 ? '' : 's'}',
+              icon: Icon(
+                value <= rating ? Icons.star_rounded : Icons.star_outline_rounded,
+                color: value <= rating
+                    ? scheme.primary
+                    : scheme.onSurfaceVariant,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StarRow extends StatelessWidget {
+  const _StarRow({required this.rating});
+
+  final int rating;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final size = MediaQuery.textScalerOf(context).scale(16);
+
+    return Semantics(
+      label: '$rating out of 5 stars',
+      excludeSemantics: true,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var value = 1; value <= 5; value++)
+            Icon(
+              value <= rating ? Icons.star_rounded : Icons.star_outline_rounded,
+              size: size,
+              color: value <= rating
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+          const SizedBox(width: HcSpace.sm),
+          Text(
+            '$rating stars',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -7,6 +7,7 @@ import '../map/map_screen.dart';
 import '../owner/owner_dashboard_screen.dart';
 import '../profile/profile_screen.dart';
 import '../scan/scan_screen.dart';
+import 'hc_bottom_nav.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -24,6 +25,8 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     final screens = [
       HomeScreen(onBrowseLocations: () => _openTab(1)),
       const LocationListScreen(),
@@ -35,46 +38,60 @@ class _AppShellState extends State<AppShell> {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('HearCast Finder')),
+      appBar: AppBar(
+        title: const Text('HearCast Finder'),
+        // A hairline instead of a shadow, matching every other surface edge.
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(height: 1, color: scheme.outlineVariant),
+        ),
+      ),
       body: screens[_selectedIndex],
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: HcBottomNav(
         selectedIndex: _selectedIndex,
-        onDestinationSelected: _openTab,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
+        onSelected: _openTab,
+        items: const [
+          HcNavItem(
+            icon: Icons.home_outlined,
+            selectedIcon: Icons.home_rounded,
             label: 'Home',
+            tooltip: 'Home',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.place_outlined),
-            selectedIcon: Icon(Icons.place),
+          HcNavItem(
+            icon: Icons.place_outlined,
+            selectedIcon: Icons.place_rounded,
             label: 'Locations',
+            tooltip: 'Locations',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map),
+          HcNavItem(
+            icon: Icons.map_outlined,
+            selectedIcon: Icons.map_rounded,
             label: 'Map',
+            tooltip: 'Map',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.bluetooth_searching),
-            selectedIcon: Icon(Icons.bluetooth_connected),
+          HcNavItem(
+            icon: Icons.wifi_tethering_rounded,
+            selectedIcon: Icons.wifi_tethering_rounded,
             label: 'Scan',
+            tooltip: 'Scan for broadcasts',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.business_outlined),
-            selectedIcon: Icon(Icons.business),
+          HcNavItem(
+            icon: Icons.storefront_outlined,
+            selectedIcon: Icons.storefront_rounded,
             label: 'Owner',
+            tooltip: 'Owner dashboard',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.admin_panel_settings_outlined),
-            selectedIcon: Icon(Icons.admin_panel_settings),
+          HcNavItem(
+            icon: Icons.verified_outlined,
+            selectedIcon: Icons.verified_rounded,
             label: 'Admin',
+            tooltip: 'Admin review',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
+          HcNavItem(
+            icon: Icons.person_outline,
+            selectedIcon: Icons.person_rounded,
             label: 'Profile',
+            tooltip: 'Profile',
           ),
         ],
       ),

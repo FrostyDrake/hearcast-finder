@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../../core/theme/hc_palette.dart';
+import '../../core/widgets/hc_states.dart';
 import '../../models/auracast_location.dart';
 import '../../providers/location_providers.dart';
 import '../../services/map_service.dart';
@@ -38,6 +40,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   @override
   Widget build(BuildContext context) {
     final locationsAsync = ref.watch(verifiedLocationsProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return locationsAsync.when(
       data: (locations) {
@@ -52,40 +55,58 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               child: GoogleMap(
                 initialCameraPosition: MapService.cameraForLocations(locations),
                 markers: markers,
+                style: isDark
+                    ? MapService.darkMapStyle
+                    : MapService.lightMapStyle,
                 myLocationEnabled: _hasLocationPermission,
                 myLocationButtonEnabled: _hasLocationPermission,
                 zoomControlsEnabled: false,
                 onMapCreated: (controller) => _mapController = controller,
               ),
             ),
-            Positioned(
-              top: 12,
-              left: 12,
-              right: 12,
-              child: _CountBadge(count: locations.length),
-            ),
-            if (_locationMessage != null)
-              Positioned(
-                left: 12,
-                right: 12,
-                bottom: 12,
-                child: _MessageBanner(
-                  message: _locationMessage!,
-                  onDismiss: () => setState(() => _locationMessage = null),
+            Positioned.fill(
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(HcSpace.md),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _CountBadge(count: locations.length),
+                      const Spacer(),
+                      if (locations.isEmpty)
+                        const HcEmptyState(
+                          icon: Icons.location_off_outlined,
+                          title: 'Nothing on the map yet',
+                          message: 'Approved locations appear here once an '
+                              'admin verifies them.',
+                        ),
+                      if (_locationMessage != null) ...[
+                        const SizedBox(height: HcSpace.sm),
+                        _MessageBanner(
+                          message: _locationMessage!,
+                          onDismiss: () =>
+                              setState(() => _locationMessage = null),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
-            if (locations.isEmpty)
-              const Positioned(
-                left: 24,
-                right: 24,
-                bottom: 24,
-                child: _EmptyMapBanner(),
-              ),
+            ),
           ],
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) => _MapErrorState(error: error),
+      error: (error, stackTrace) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(HcSpace.xxl),
+          child: HcErrorState(
+            title: 'Could not load the map',
+            error: error,
+            onRetry: () => ref.invalidate(verifiedLocationsProvider),
+          ),
+        ),
+      ),
     );
   }
 
@@ -134,6 +155,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 }
 
+/// A floating pill over the map. It sits on an opaque surface rather than a
+/// translucent one so its text keeps a known contrast ratio no matter what
+/// the map tiles underneath happen to look like.
 class _CountBadge extends StatelessWidget {
   const _CountBadge({required this.count});
 
@@ -141,24 +165,48 @@ class _CountBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final palette = context.hcPalette;
+
     return Align(
       alignment: Alignment.topLeft,
-      child: Card(
-        elevation: 3,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.verified_outlined, size: 18),
-              const SizedBox(width: 6),
-              Text(
-                '$count verified location${count == 1 ? '' : 's'}',
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
-            ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: HcSpace.lg,
+          vertical: HcSpace.md,
+        ),
+        decoration: ShapeDecoration(
+          color: scheme.surfaceContainerLowest,
+          shape: StadiumBorder(
+            side: BorderSide(color: scheme.outlineVariant),
           ),
+          shadows: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 12,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ExcludeSemantics(
+              child: Icon(
+                Icons.verified_rounded,
+                size: MediaQuery.textScalerOf(context).scale(18),
+                color: palette.verified.outline,
+              ),
+            ),
+            const SizedBox(width: HcSpace.sm),
+            Text(
+              '$count verified location${count == 1 ? '' : 's'}',
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: scheme.onSurface,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -173,77 +221,36 @@ class _MessageBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
-        child: Row(
-          children: [
-            Expanded(child: Text(message)),
-            IconButton(
-              onPressed: onDismiss,
-              icon: const Icon(Icons.close),
-              tooltip: 'Dismiss',
-              visualDensity: VisualDensity.compact,
-            ),
-          ],
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(HcSpace.lg, HcSpace.sm, HcSpace.sm, HcSpace.sm),
+      decoration: ShapeDecoration(
+        color: scheme.surfaceContainerLowest,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(HcRadius.card),
+          side: BorderSide(color: scheme.outlineVariant),
         ),
-      ),
-    );
-  }
-}
-
-class _EmptyMapBanner extends StatelessWidget {
-  const _EmptyMapBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            const Icon(Icons.location_off_outlined),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'No verified locations yet. Approved locations will appear here once an admin verifies them.',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MapErrorState extends StatelessWidget {
-  const _MapErrorState({required this.error});
-
-  final Object error;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error_outline, size: 32),
-                const SizedBox(height: 8),
-                const Text('Could not load the map'),
-                const SizedBox(height: 4),
-                Text('$error', textAlign: TextAlign.center),
-              ],
-            ),
+        shadows: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
           ),
-        ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(message, style: theme.textTheme.bodyMedium),
+          ),
+          IconButton(
+            onPressed: onDismiss,
+            icon: const Icon(Icons.close_rounded),
+            tooltip: 'Dismiss message',
+          ),
+        ],
       ),
     );
   }
